@@ -10,8 +10,11 @@ from core.templates import TEMPLATE_FACTORIES, apply_theme_to_page
 from core.exporter import export_single_page, export_all_pages, get_default_export_filename
 from ui.theme import (
     BG_DARK, BG_SECONDARY, BG_TERTIARY, TEXT_PRIMARY, TEXT_SECONDARY,
-    ACCENT_COLOR, ACCENT_LEMEMO, FONT_BOLD, FONT_SMALL, FONT_TITLE, FONT_SYSTEM
+    ACCENT_COLOR, ACCENT_LEMEMO, FONT_BOLD, FONT_SMALL, FONT_TITLE, FONT_SYSTEM,
+    BTN_BG_DEFAULT, BTN_BG_HOVER, BTN_FG, BTN_ACCENT_BG, BTN_ACCENT_HOVER,
+    BTN_LEMEMO_BG, BTN_LEMEMO_HOVER
 )
+from ui.widgets import DarkButton
 from ui.canvas_view import CanvasView
 from ui.page_manager import PageManagerBar
 from ui.property_panel import PropertyPanel
@@ -130,23 +133,23 @@ class MainWindow(tk.Tk):
         )
         tpl_combo.pack(side=tk.LEFT, padx=2)
         
-        btn_apply_tpl = tk.Button(
-            toolbar, text="Apply", bg=BG_TERTIARY, fg=TEXT_PRIMARY,
-            font=FONT_SMALL, relief=tk.FLAT, command=lambda: self.on_apply_template(self.toolbar_template_var.get())
+        btn_apply_tpl = DarkButton(
+            toolbar, text="Apply", bg=BTN_BG_DEFAULT, fg=BTN_FG,
+            font=FONT_SMALL, padx=8, pady=4, command=lambda: self.on_apply_template(self.toolbar_template_var.get())
         )
         btn_apply_tpl.pack(side=tk.LEFT, padx=2)
 
         # Theme preset button
-        btn_theme = tk.Button(
-            toolbar, text="✨ Lememo Luxury Theme", bg=ACCENT_LEMEMO, fg="#FFFFFF",
-            font=FONT_BOLD, relief=tk.FLAT, padx=8, command=self.on_apply_luxury_theme
+        btn_theme = DarkButton(
+            toolbar, text="✨ Lememo Luxury Theme", bg=BTN_LEMEMO_BG, hover_bg=BTN_LEMEMO_HOVER, fg=BTN_FG,
+            font=FONT_BOLD, padx=10, pady=4, command=self.on_apply_luxury_theme
         )
         btn_theme.pack(side=tk.LEFT, padx=8)
 
         # Guides Toggle
-        self.guides_btn = tk.Button(
-            toolbar, text="📐 Guides: ON", bg=BG_TERTIARY, fg=TEXT_PRIMARY,
-            font=FONT_SMALL, relief=tk.FLAT, padx=6, command=self.on_toggle_guides
+        self.guides_btn = DarkButton(
+            toolbar, text="📐 Guides: ON", bg=BTN_BG_DEFAULT, fg=BTN_FG,
+            font=FONT_SMALL, padx=8, pady=4, command=self.on_toggle_guides
         )
         self.guides_btn.pack(side=tk.LEFT, padx=4)
 
@@ -154,23 +157,22 @@ class MainWindow(tk.Tk):
         right_frame = tk.Frame(toolbar, bg=BG_SECONDARY)
         right_frame.pack(side=tk.RIGHT, padx=12)
 
-        btn_export_single = tk.Button(
-            right_frame, text="Export PNG", bg=BG_TERTIARY, fg=TEXT_PRIMARY,
-            font=FONT_BOLD, relief=tk.FLAT, padx=10, command=self.on_export_current
+        btn_export_single = DarkButton(
+            right_frame, text="Export PNG", bg=BTN_BG_DEFAULT, fg=BTN_FG,
+            font=FONT_BOLD, padx=10, pady=4, command=self.on_export_current
         )
         btn_export_single.pack(side=tk.LEFT, padx=4)
 
-        btn_export_all = tk.Button(
-            right_frame, text="⚡ Export All PNGs", bg=ACCENT_COLOR, fg="#FFFFFF",
-            font=FONT_BOLD, relief=tk.FLAT, padx=12, command=self.on_export_all
+        btn_export_all = DarkButton(
+            right_frame, text="⚡ Export All PNGs", bg=BTN_ACCENT_BG, hover_bg=BTN_ACCENT_HOVER, fg=BTN_FG,
+            font=FONT_BOLD, padx=12, pady=4, command=self.on_export_all
         )
         btn_export_all.pack(side=tk.LEFT, padx=4)
 
     def _create_tool_btn(self, parent, text, command):
-        btn = tk.Button(
-            parent, text=text, bg=BG_TERTIARY, fg=TEXT_PRIMARY,
-            activebackground=ACCENT_COLOR, activeforeground="#FFF",
-            font=FONT_SMALL, relief=tk.FLAT, padx=8, command=command
+        btn = DarkButton(
+            parent, text=text, bg=BTN_BG_DEFAULT, fg=BTN_FG,
+            font=FONT_SMALL, padx=8, pady=4, command=command
         )
         btn.pack(side=tk.LEFT, padx=2)
         return btn

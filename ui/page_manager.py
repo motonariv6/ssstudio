@@ -8,8 +8,11 @@ import uuid
 from core.models import Project, Page, ImageLayer, TextLayer
 from ui.theme import (
     BG_DARK, BG_SECONDARY, BG_TERTIARY, TEXT_PRIMARY, TEXT_SECONDARY,
-    ACCENT_COLOR, FONT_BOLD, FONT_SMALL, FONT_SYSTEM
+    ACCENT_COLOR, FONT_BOLD, FONT_SMALL, FONT_SYSTEM,
+    BTN_BG_DEFAULT, BTN_BG_HOVER, BTN_FG, BTN_ACCENT_BG, BTN_ACCENT_HOVER,
+    BTN_DANGER_BG, BTN_DANGER_HOVER
 )
+from ui.widgets import DarkButton
 
 
 class PageManagerBar(tk.Frame):
@@ -32,28 +35,26 @@ class PageManagerBar(tk.Frame):
         self.btn_frame = tk.Frame(self, bg=BG_SECONDARY)
         self.btn_frame.pack(side=tk.LEFT, padx=8, pady=4)
 
-        self.btn_add = tk.Button(
+        self.btn_add = DarkButton(
             self.btn_frame,
             text="+ Add Page",
-            bg=BG_TERTIARY,
-            fg=TEXT_PRIMARY,
-            activebackground=ACCENT_COLOR,
-            activeforeground="#FFFFFF",
-            relief=tk.FLAT,
+            bg=BTN_BG_DEFAULT,
+            fg=BTN_FG,
             font=FONT_SMALL,
+            padx=8,
+            pady=4,
             command=self.add_new_page
         )
         self.btn_add.pack(side=tk.LEFT, padx=2)
 
-        self.btn_dup = tk.Button(
+        self.btn_dup = DarkButton(
             self.btn_frame,
             text="⧉ Duplicate Page",
-            bg=BG_TERTIARY,
-            fg=TEXT_PRIMARY,
-            activebackground=ACCENT_COLOR,
-            activeforeground="#FFFFFF",
-            relief=tk.FLAT,
+            bg=BTN_BG_DEFAULT,
+            fg=BTN_FG,
             font=FONT_SMALL,
+            padx=8,
+            pady=4,
             command=self.duplicate_current_page
         )
         self.btn_dup.pack(side=tk.LEFT, padx=2)
@@ -69,24 +70,27 @@ class PageManagerBar(tk.Frame):
         self.right_frame = tk.Frame(self, bg=BG_SECONDARY)
         self.right_frame.pack(side=tk.RIGHT, padx=8, pady=4)
 
-        self.btn_rename = tk.Button(
+        self.btn_rename = DarkButton(
             self.right_frame,
             text="✏ Rename",
-            bg=BG_TERTIARY,
-            fg=TEXT_PRIMARY,
-            relief=tk.FLAT,
+            bg=BTN_BG_DEFAULT,
+            fg=BTN_FG,
             font=FONT_SMALL,
+            padx=8,
+            pady=4,
             command=self.rename_current_page
         )
         self.btn_rename.pack(side=tk.LEFT, padx=2)
 
-        self.btn_del = tk.Button(
+        self.btn_del = DarkButton(
             self.right_frame,
             text="✕ Delete",
-            bg=BG_TERTIARY,
-            fg="#FF6961",
-            relief=tk.FLAT,
+            bg=BTN_DANGER_BG,
+            hover_bg=BTN_DANGER_HOVER,
+            fg="#FFFFFF",
             font=FONT_SMALL,
+            padx=8,
+            pady=4,
             command=self.delete_current_page
         )
         self.btn_del.pack(side=tk.LEFT, padx=2)
@@ -104,21 +108,20 @@ class PageManagerBar(tk.Frame):
 
         for i, page in enumerate(project.pages):
             is_active = (i == project.active_page_index)
-            bg = ACCENT_COLOR if is_active else BG_TERTIARY
-            fg = "#FFFFFF" if is_active else TEXT_SECONDARY
+            bg = BTN_ACCENT_BG if is_active else BTN_BG_DEFAULT
+            hover_bg = BTN_ACCENT_HOVER if is_active else BTN_BG_HOVER
+            fg = "#FFFFFF" if is_active else "#D0D0D5"
             font = FONT_BOLD if is_active else FONT_SMALL
 
-            btn = tk.Button(
+            btn = DarkButton(
                 self.page_buttons_container,
                 text=f"{i+1}. {page.name}",
                 bg=bg,
+                hover_bg=hover_bg,
                 fg=fg,
-                activebackground=ACCENT_COLOR,
-                activeforeground="#FFFFFF",
-                relief=tk.FLAT,
                 font=font,
-                padx=8,
-                pady=2,
+                padx=10,
+                pady=4,
                 command=lambda idx=i: self.select_page(idx)
             )
             btn.pack(side=tk.LEFT, padx=2)

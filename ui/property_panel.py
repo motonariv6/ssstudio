@@ -13,8 +13,11 @@ from core.models import (
 from core.fonts import get_available_font_names
 from ui.theme import (
     BG_DARK, BG_SECONDARY, BG_TERTIARY, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED,
-    ACCENT_COLOR, ACCENT_LEMEMO, BORDER_COLOR, FONT_BOLD, FONT_SMALL, FONT_SYSTEM
+    ACCENT_COLOR, ACCENT_LEMEMO, BORDER_COLOR, FONT_BOLD, FONT_SMALL, FONT_SYSTEM,
+    BTN_BG_DEFAULT, BTN_BG_HOVER, BTN_FG, BTN_ACCENT_BG, BTN_ACCENT_HOVER,
+    BTN_DANGER_BG, BTN_DANGER_HOVER
 )
+from ui.widgets import DarkButton
 
 
 class PropertyPanel(tk.Frame):
@@ -110,8 +113,8 @@ class PropertyPanel(tk.Frame):
         tk.Label(row2, text="×", fg=TEXT_SECONDARY, bg=BG_SECONDARY).pack(side=tk.LEFT, padx=2)
         tk.Entry(row2, textvariable=self.canvas_h_var, width=6, bg=BG_TERTIARY, fg=TEXT_PRIMARY, insertbackground="#FFF", relief=tk.FLAT).pack(side=tk.LEFT, padx=2)
         
-        btn_apply_size = tk.Button(
-            row2, text="Apply", bg=ACCENT_COLOR, fg="#FFF", font=FONT_SMALL, relief=tk.FLAT,
+        btn_apply_size = DarkButton(
+            row2, text="Apply", bg=BTN_ACCENT_BG, hover_bg=BTN_ACCENT_HOVER, fg="#FFFFFF", font=FONT_SMALL, padx=8, pady=2,
             command=self._apply_custom_canvas_size
         )
         btn_apply_size.pack(side=tk.RIGHT, padx=2)
@@ -165,14 +168,14 @@ class PropertyPanel(tk.Frame):
         row2.pack(fill=tk.X, pady=4)
         tk.Label(row2, text="Colors:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=8, anchor=tk.W).pack(side=tk.LEFT)
 
-        self.btn_bg_start = tk.Button(
-            row2, text="Start", width=6, relief=tk.FLAT, font=FONT_SMALL,
+        self.btn_bg_start = DarkButton(
+            row2, text="Start Color", bg=BTN_BG_DEFAULT, fg=BTN_FG, font=FONT_SMALL, padx=8, pady=3,
             command=lambda: self._pick_bg_color("start")
         )
         self.btn_bg_start.pack(side=tk.LEFT, padx=2)
 
-        self.btn_bg_end = tk.Button(
-            row2, text="End", width=6, relief=tk.FLAT, font=FONT_SMALL,
+        self.btn_bg_end = DarkButton(
+            row2, text="End Color", bg=BTN_BG_DEFAULT, fg=BTN_FG, font=FONT_SMALL, padx=8, pady=3,
             command=lambda: self._pick_bg_color("end")
         )
         self.btn_bg_end.pack(side=tk.LEFT, padx=2)
@@ -262,39 +265,39 @@ class PropertyPanel(tk.Frame):
         btn_row = tk.Frame(card, bg=BG_SECONDARY)
         btn_row.pack(fill=tk.X, pady=2)
 
-        btn_add_img = tk.Button(
-            btn_row, text="+ Screenshot", bg=BG_TERTIARY, fg=TEXT_PRIMARY,
-            font=FONT_SMALL, relief=tk.FLAT, command=self._add_image_layer
+        btn_add_img = DarkButton(
+            btn_row, text="+ Screenshot", bg=BTN_BG_DEFAULT, fg=BTN_FG,
+            font=FONT_SMALL, padx=6, pady=3, command=self._add_image_layer
         )
         btn_add_img.pack(side=tk.LEFT, padx=2)
 
-        btn_add_txt = tk.Button(
-            btn_row, text="+ Text", bg=BG_TERTIARY, fg=TEXT_PRIMARY,
-            font=FONT_SMALL, relief=tk.FLAT, command=self._add_text_layer
+        btn_add_txt = DarkButton(
+            btn_row, text="+ Text", bg=BTN_BG_DEFAULT, fg=BTN_FG,
+            font=FONT_SMALL, padx=6, pady=3, command=self._add_text_layer
         )
         btn_add_txt.pack(side=tk.LEFT, padx=2)
 
-        btn_dup = tk.Button(
-            btn_row, text="⧉ Dup", bg=BG_TERTIARY, fg=TEXT_PRIMARY,
-            font=FONT_SMALL, relief=tk.FLAT, command=self._duplicate_layer
+        btn_dup = DarkButton(
+            btn_row, text="⧉ Dup", bg=BTN_BG_DEFAULT, fg=BTN_FG,
+            font=FONT_SMALL, padx=6, pady=3, command=self._duplicate_layer
         )
         btn_dup.pack(side=tk.LEFT, padx=2)
 
-        btn_up = tk.Button(
-            btn_row, text="▲", bg=BG_TERTIARY, fg=TEXT_PRIMARY,
-            font=FONT_SMALL, relief=tk.FLAT, command=self._move_layer_up
+        btn_up = DarkButton(
+            btn_row, text="▲", bg=BTN_BG_DEFAULT, fg=BTN_FG,
+            font=FONT_SMALL, padx=6, pady=3, command=self._move_layer_up
         )
         btn_up.pack(side=tk.LEFT, padx=2)
 
-        btn_down = tk.Button(
-            btn_row, text="▼", bg=BG_TERTIARY, fg=TEXT_PRIMARY,
-            font=FONT_SMALL, relief=tk.FLAT, command=self._move_layer_down
+        btn_down = DarkButton(
+            btn_row, text="▼", bg=BTN_BG_DEFAULT, fg=BTN_FG,
+            font=FONT_SMALL, padx=6, pady=3, command=self._move_layer_down
         )
         btn_down.pack(side=tk.LEFT, padx=2)
 
-        btn_del = tk.Button(
-            btn_row, text="✕", bg=BG_TERTIARY, fg="#FF6961",
-            font=FONT_SMALL, relief=tk.FLAT, command=self._delete_layer
+        btn_del = DarkButton(
+            btn_row, text="✕", bg=BTN_DANGER_BG, hover_bg=BTN_DANGER_HOVER, fg="#FFFFFF",
+            font=FONT_SMALL, padx=6, pady=3, command=self._delete_layer
         )
         btn_del.pack(side=tk.LEFT, padx=2)
 
@@ -505,9 +508,9 @@ class PropertyPanel(tk.Frame):
         row_img.pack(fill=tk.X, pady=4)
         tk.Label(row_img, text="Image:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
         
-        btn_change = tk.Button(
-            row_img, text="Replace Image...", bg=BG_TERTIARY, fg=TEXT_PRIMARY,
-            font=FONT_SMALL, relief=tk.FLAT,
+        btn_change = DarkButton(
+            row_img, text="Replace Image...", bg=BTN_BG_DEFAULT, fg=BTN_FG,
+            font=FONT_SMALL, padx=8, pady=4,
             command=lambda: self._replace_image_layer_file(layer)
         )
         btn_change.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -576,8 +579,8 @@ class PropertyPanel(tk.Frame):
         b_slider.set(layer.frame.border_width)
         b_slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        b_color_btn = tk.Button(
-            b_row, text="Color", bg=layer.frame.border_color, fg="#FFF", font=FONT_SMALL, relief=tk.FLAT,
+        b_color_btn = DarkButton(
+            b_row, text="Border Color", bg=BTN_BG_DEFAULT, fg=BTN_FG, font=FONT_SMALL, padx=8, pady=2,
             command=lambda: self._pick_frame_border_color(layer)
         )
         b_color_btn.pack(side=tk.RIGHT, padx=2)
@@ -730,9 +733,11 @@ class PropertyPanel(tk.Frame):
         align_frame = tk.Frame(opt_row, bg=BG_SECONDARY)
         align_frame.pack(side=tk.RIGHT)
         for a_mode, a_icon in [("left", "⬅"), ("center", "⬌"), ("right", "➡")]:
-            btn = tk.Button(
-                align_frame, text=a_icon, bg=ACCENT_COLOR if layer.align == a_mode else BG_TERTIARY,
-                fg="#FFF", font=FONT_SMALL, relief=tk.FLAT, padx=6,
+            btn = DarkButton(
+                align_frame, text=a_icon,
+                bg=BTN_ACCENT_BG if layer.align == a_mode else BTN_BG_DEFAULT,
+                hover_bg=BTN_ACCENT_HOVER if layer.align == a_mode else BTN_BG_HOVER,
+                fg="#FFF", font=FONT_SMALL, padx=8, pady=2,
                 command=lambda m=a_mode: self._set_text_align(layer, m)
             )
             btn.pack(side=tk.LEFT, padx=1)
@@ -750,14 +755,14 @@ class PropertyPanel(tk.Frame):
             ("#D4AF37", "Gold")
         ]
         for c_hex, c_name in preset_colors:
-            c_btn = tk.Button(
-                color_row, bg=c_hex, width=2, relief=tk.FLAT,
+            c_btn = DarkButton(
+                color_row, text="  ", bg=c_hex, hover_bg=c_hex, font=FONT_SMALL, padx=6, pady=2,
                 command=lambda c=c_hex: self._set_text_color(layer, c)
             )
             c_btn.pack(side=tk.LEFT, padx=2)
 
-        custom_col_btn = tk.Button(
-            color_row, text="🎨", bg=BG_TERTIARY, fg=TEXT_PRIMARY, font=FONT_SMALL, relief=tk.FLAT,
+        custom_col_btn = DarkButton(
+            color_row, text="🎨 Pick", bg=BTN_BG_DEFAULT, fg=BTN_FG, font=FONT_SMALL, padx=6, pady=2,
             command=lambda: self._pick_text_custom_color(layer)
         )
         custom_col_btn.pack(side=tk.LEFT, padx=4)
@@ -805,8 +810,8 @@ class PropertyPanel(tk.Frame):
         # Background
         bg_name = GRADIENT_PRESETS.get(page.background.preset, {}).get("name", "Custom")
         self.bg_preset_var.set(bg_name)
-        self.btn_bg_start.configure(bg=page.background.color_start)
-        self.btn_bg_end.configure(bg=page.background.color_end)
+        self.btn_bg_start.configure(text=f"Start: {page.background.color_start}")
+        self.btn_bg_end.configure(text=f"End: {page.background.color_end}")
         self.bg_dir_var.set(page.background.direction)
         self.bg_spotlight_var.set(page.background.spotlight_enabled)
         self.bg_spotlight_scale.set(page.background.spotlight_strength)
