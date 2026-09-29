@@ -243,14 +243,20 @@ class MainWindow(tk.Tk):
         self.layer_sidebar.refresh()
 
     def _on_content_changed(self):
-        self.canvas_view.refresh()
-        self.layer_sidebar._refresh_layer_list()
+        if hasattr(self, "canvas_view"):
+            self.canvas_view.refresh()
+        if hasattr(self, "layer_sidebar"):
+            self.layer_sidebar._refresh_layer_list()
 
     def refresh_all(self):
-        self.page_bar.refresh()
-        self.canvas_view.refresh()
-        self.canvas_sidebar.refresh()
-        self.layer_sidebar.refresh()
+        if hasattr(self, "page_bar"):
+            self.page_bar.refresh()
+        if hasattr(self, "canvas_view"):
+            self.canvas_view.refresh()
+        if hasattr(self, "canvas_sidebar"):
+            self.canvas_sidebar.refresh()
+        if hasattr(self, "layer_sidebar"):
+            self.layer_sidebar.refresh()
 
     def on_toggle_guides(self):
         new_state = not self.canvas_view.show_guides

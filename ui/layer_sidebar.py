@@ -63,6 +63,7 @@ class LayerSidebar(tk.Frame):
         self._build_layers_section()
         self._build_inspector_section()
 
+        self._initialized = True
         self.refresh()
 
     def _on_panel_resize(self, event):
@@ -445,11 +446,13 @@ class LayerSidebar(tk.Frame):
 
     def _update_layer_prop(self, layer, prop, val):
         setattr(layer, prop, val)
-        self.on_change()
+        if getattr(self, "_initialized", False):
+            self.on_change()
 
     def _update_frame_prop(self, layer: ImageLayer, prop, val):
         setattr(layer.frame, prop, val)
-        self.on_change()
+        if getattr(self, "_initialized", False):
+            self.on_change()
 
     def _pick_frame_border_color(self, layer: ImageLayer):
         color = colorchooser.askcolor(color=layer.frame.border_color, title="Choose Frame Border Color")

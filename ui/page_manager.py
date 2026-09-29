@@ -16,7 +16,7 @@ from ui.widgets import DarkButton
 
 
 class PageManagerBar(tk.Frame):
-    """Horizontal page thumbnail/tab management bar."""
+    """Horizontal scrollable page thumbnail/tab management bar."""
 
     def __init__(
         self,
@@ -31,9 +31,9 @@ class PageManagerBar(tk.Frame):
 
         self.pack_propagate(False)
 
-        # Left action buttons
+        # 1. Left action buttons
         self.btn_frame = tk.Frame(self, bg=BG_SECONDARY)
-        self.btn_frame.pack(side=tk.LEFT, padx=8, pady=4)
+        self.btn_frame.pack(side=tk.LEFT, padx=(8, 2), pady=4)
 
         self.btn_add = DarkButton(
             self.btn_frame,
@@ -49,7 +49,7 @@ class PageManagerBar(tk.Frame):
 
         self.btn_dup = DarkButton(
             self.btn_frame,
-            text="⧉ Duplicate Page",
+            text="⧉ Duplicate",
             bg=BTN_BG_DEFAULT,
             fg=BTN_FG,
             font=FONT_SMALL,
@@ -59,16 +59,35 @@ class PageManagerBar(tk.Frame):
         )
         self.btn_dup.pack(side=tk.LEFT, padx=2)
 
-        # Scrollable pages container
-        self.pages_scroll_frame = tk.Frame(self, bg=BG_SECONDARY)
-        self.pages_scroll_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=4, pady=4)
+        # Left scroll arrow
+        self.btn_scroll_left = DarkButton(
+            self.btn_frame,
+            text="◀",
+            bg=BTN_BG_DEFAULT,
+            fg=BTN_FG,
+            font=FONT_SMALL,
+            padx=6,
+            pady=4,
+            command=self.scroll_left
+        )
+        self.btn_scroll_left.pack(side=tk.LEFT, padx=(4, 2))
 
-        self.page_buttons_container = tk.Frame(self.pages_scroll_frame, bg=BG_SECONDARY)
-        self.page_buttons_container.pack(side=tk.LEFT, fill=tk.BOTH)
-
-        # Right action buttons
+        # 2. Right action buttons
         self.right_frame = tk.Frame(self, bg=BG_SECONDARY)
-        self.right_frame.pack(side=tk.RIGHT, padx=8, pady=4)
+        self.right_frame.pack(side=tk.RIGHT, padx=(2, 8), pady=4)
+
+        # Right scroll arrow
+        self.btn_scroll_right = DarkButton(
+            self.right_frame,
+            text="▶",
+            bg=BTN_BG_DEFAULT,
+            fg=BTN_FG,
+            font=FONT_SMALL,
+            padx=6,
+            pady=4,
+            command=self.scroll_right
+        )
+        self.btn_scroll_right.pack(side=tk.LEFT, padx=(2, 4))
 
         self.btn_rename = DarkButton(
             self.right_frame,
@@ -95,17 +114,46 @@ class PageManagerBar(tk.Frame):
         )
         self.btn_del.pack(side=tk.LEFT, padx=2)
 
+        # 3. Middle: Scrollable Tabs Canvas
+        self.tab_canvas = tk.Canvas(self, bg=BG_SECONDARY, height=36, highlightthickness=0, bd=0)
+        self.tab_container = tk.Frame(self.tab_canvas, bg=BG_SECONDARY)
+
+        self._window_id = self.tab_canvas.create_window((0, 0), window=self.tab_container, anchor="nw")
+        self.tab_container.bind("<Configure>", self._on_tab_container_configure)
+        self.tab_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2, pady=4)
+
+        # Mousewheel & trackpad scrolling
+        self.tab_canvas.bind("<MouseWheel>", self._on_mousewheel)
+        self.tab_container.bind("<MouseWheel>", self._on_mousewheel)
+        self.tab_canvas.bind("<Shift-MouseWheel>", self._on_mousewheel)
+        self.tab_container.bind("<Shift-MouseWheel>", self._on_mousewheel)
+
         self.refresh()
+
+    def _on_tab_container_configure(self, event=None):
+        self.tab_canvas.configure(scrollregion=self.tab_canvas.bbox("all"))
+
+    def _on_mousewheel(self, event):
+        delta = event.delta
+        if delta != 0:
+            self.tab_canvas.xview_scroll(int(-1 * (delta / 1)), "units")
+
+    def scroll_left(self):
+        self.tab_canvas.xview_scroll(-3, "units")
+
+    def scroll_right(self):
+        self.tab_canvas.xview_scroll(3, "units")
 
     def refresh(self):
         """Re-draws all page tab buttons."""
-        for widget in self.page_buttons_container.winfo_children():
+        for widget in self.tab_container.winfo_children():
             widget.destroy()
 
         project = self.get_project()
         if not project:
             return
 
+        active_btn = None
         for i, page in enumerate(project.pages):
             is_active = (i == project.active_page_index)
             bg = BTN_ACCENT_BG if is_active else BTN_BG_DEFAULT
@@ -114,7 +162,7 @@ class PageManagerBar(tk.Frame):
             font = FONT_BOLD if is_active else FONT_SMALL
 
             btn = DarkButton(
-                self.page_buttons_container,
+                self.tab_container,
                 text=f"{i+1}. {page.name}",
                 bg=bg,
                 hover_bg=hover_bg,
@@ -124,7 +172,42 @@ class PageManagerBar(tk.Frame):
                 pady=4,
                 command=lambda idx=i: self.select_page(idx)
             )
+            btn.bind("<MouseWheel>", self._on_mousewheel)
+            btn.bind("<Shift-MouseWheel>", self._on_mousewheel)
             btn.pack(side=tk.LEFT, padx=2)
+
+            if is_active:
+                active_btn = btn
+
+        self.tab_container.update_idletasks()
+        self.tab_canvas.configure(scrollregion=self.tab_canvas.bbox("all"))
+
+        # Automatically scroll to active tab if needed
+        if active_btn:
+            self._ensure_tab_visible(active_btn)
+
+    def _ensure_tab_visible(self, widget: tk.Widget):
+        self.tab_container.update_idletasks()
+        widget_x = widget.winfo_x()
+        widget_w = widget.winfo_width()
+        canvas_w = self.tab_canvas.winfo_width()
+        total_w = self.tab_container.winfo_width()
+
+        if total_w <= canvas_w or canvas_w <= 0:
+            self.tab_canvas.xview_moveto(0.0)
+            return
+
+        # Check bounds
+        x_view = self.tab_canvas.xview()
+        left_visible = x_view[0] * total_w
+        right_visible = x_view[1] * total_w
+
+        if widget_x < left_visible:
+            new_left = max(0.0, widget_x / total_w)
+            self.tab_canvas.xview_moveto(new_left)
+        elif widget_x + widget_w > right_visible:
+            new_left = max(0.0, (widget_x + widget_w - canvas_w + 20) / total_w)
+            self.tab_canvas.xview_moveto(new_left)
 
     def select_page(self, index: int):
         project = self.get_project()

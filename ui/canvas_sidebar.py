@@ -52,6 +52,7 @@ class CanvasSidebar(tk.Frame):
         self._build_canvas_section()
         self._build_background_section()
 
+        self._initialized = True
         self.refresh()
 
     def _on_panel_resize(self, event):
@@ -242,6 +243,8 @@ class CanvasSidebar(tk.Frame):
         self.on_change()
 
     def _on_spotlight_strength_changed(self, val):
+        if not getattr(self, "_initialized", False):
+            return
         page = self.get_active_page()
         page.background.spotlight_strength = float(val)
         self.on_change()
