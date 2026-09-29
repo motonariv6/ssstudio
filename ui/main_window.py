@@ -17,7 +17,8 @@ from ui.theme import (
 from ui.widgets import DarkButton
 from ui.canvas_view import CanvasView
 from ui.page_manager import PageManagerBar
-from ui.property_panel import PropertyPanel
+from ui.canvas_sidebar import CanvasSidebar
+from ui.layer_sidebar import LayerSidebar
 
 
 class MainWindow(tk.Tk):
@@ -26,8 +27,8 @@ class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("SSStudio — App Store Screenshot Composer")
-        self.geometry("1380x880")
-        self.minsize(1050, 680)
+        self.geometry("1420x900")
+        self.minsize(1100, 680)
         self.configure(bg=BG_DARK)
 
         # State
@@ -184,13 +185,22 @@ class MainWindow(tk.Tk):
         container = tk.Frame(self, bg=BG_DARK)
         container.pack(fill=tk.BOTH, expand=True)
 
-        # Left area: Page Bar + Canvas
-        left_pane = tk.Frame(container, bg=BG_DARK)
-        left_pane.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # 1. Left Sidebar: Canvas & Background Settings
+        self.canvas_sidebar = CanvasSidebar(
+            container,
+            get_project=lambda: self.project,
+            get_active_page=lambda: self.project.active_page,
+            on_change=self._on_content_changed
+        )
+        self.canvas_sidebar.pack(side=tk.LEFT, fill=tk.Y)
+
+        # 2. Center Area: Page Bar + Interactive Canvas Preview
+        center_pane = tk.Frame(container, bg=BG_DARK)
+        center_pane.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Top Page Manager Bar
         self.page_bar = PageManagerBar(
-            left_pane,
+            center_pane,
             get_project=lambda: self.project,
             on_page_changed=self._on_page_switched
         )
@@ -198,7 +208,7 @@ class MainWindow(tk.Tk):
 
         # Interactive Canvas Preview
         self.canvas_view = CanvasView(
-            left_pane,
+            center_pane,
             get_project=lambda: self.project,
             get_active_page=lambda: self.project.active_page,
             on_layer_selected=self._on_layer_selected,
@@ -206,8 +216,8 @@ class MainWindow(tk.Tk):
         )
         self.canvas_view.pack(fill=tk.BOTH, expand=True)
 
-        # Right area: Property Panel
-        self.property_panel = PropertyPanel(
+        # 3. Right Sidebar: Layers & Layer Properties Inspector
+        self.layer_sidebar = LayerSidebar(
             container,
             get_project=lambda: self.project,
             get_active_page=lambda: self.project.active_page,
@@ -215,7 +225,7 @@ class MainWindow(tk.Tk):
             on_select_layer=self._on_layer_selected,
             on_change=self._on_content_changed
         )
-        self.property_panel.pack(side=tk.RIGHT, fill=tk.Y)
+        self.layer_sidebar.pack(side=tk.RIGHT, fill=tk.Y)
 
     # -------------------------------------------------------------
     # Event Handlers & State Sync
@@ -224,21 +234,23 @@ class MainWindow(tk.Tk):
         self.selected_layer = None
         self.canvas_view.set_selected_layer(None)
         self.canvas_view.refresh()
-        self.property_panel.refresh()
+        self.canvas_sidebar.refresh()
+        self.layer_sidebar.refresh()
 
     def _on_layer_selected(self, layer: Optional[LayerType]):
         self.selected_layer = layer
         self.canvas_view.set_selected_layer(layer)
-        self.property_panel.refresh()
+        self.layer_sidebar.refresh()
 
     def _on_content_changed(self):
         self.canvas_view.refresh()
-        self.property_panel._refresh_layer_list()
+        self.layer_sidebar._refresh_layer_list()
 
     def refresh_all(self):
         self.page_bar.refresh()
         self.canvas_view.refresh()
-        self.property_panel.refresh()
+        self.canvas_sidebar.refresh()
+        self.layer_sidebar.refresh()
 
     def on_toggle_guides(self):
         new_state = not self.canvas_view.show_guides
