@@ -18,6 +18,7 @@ from ui.theme import (
     BTN_DANGER_BG, BTN_DANGER_HOVER
 )
 from ui.widgets import DarkButton
+from ui.crop_dialog import open_crop_dialog
 
 
 class PropertyPanel(tk.Frame):
@@ -515,6 +516,15 @@ class PropertyPanel(tk.Frame):
         )
         btn_change.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
+        crop_row = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
+        crop_row.pack(fill=tk.X, pady=4)
+        for title, action in [
+            ("Crop...", lambda: open_crop_dialog(self, layer, self.on_change)),
+            ("Reset Crop", lambda: self._reset_image_crop(layer)),
+        ]:
+            DarkButton(crop_row, text=title, command=action, bg=BTN_BG_DEFAULT,
+                       fg=BTN_FG, font=FONT_SMALL, padx=8, pady=4).pack(side=tk.LEFT, padx=2)
+
         # Scale slider
         row_scale = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
         row_scale.pack(fill=tk.X, pady=2)
@@ -610,6 +620,10 @@ class PropertyPanel(tk.Frame):
         sh_blur_slider.set(layer.frame.shadow_blur)
         sh_blur_slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
+    def _reset_image_crop(self, layer: ImageLayer):
+        layer.reset_crop()
+        self.on_change()
+
     def _replace_image_layer_file(self, layer: ImageLayer):
         path = filedialog.askopenfilename(
             title="Replace Screenshot Image",
@@ -617,6 +631,7 @@ class PropertyPanel(tk.Frame):
         )
         if path:
             layer.file_path = path
+            layer.reset_crop()
             self.refresh()
             self.on_change()
 

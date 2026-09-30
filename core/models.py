@@ -209,6 +209,15 @@ class ImageLayer:
     locked: bool = False
     layer_type: str = "image"
 
+    crop_left: float = 0.0
+    crop_top: float = 0.0
+    crop_right: float = 1.0
+    crop_bottom: float = 1.0
+
+    def reset_crop(self):
+        self.crop_left = self.crop_top = 0.0
+        self.crop_right = self.crop_bottom = 1.0
+
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
         d["frame"] = self.frame.to_dict()
