@@ -11,6 +11,7 @@ from core.models import (
     GradientConfig, FrameConfig, CANVAS_PRESETS
 )
 from core.fonts import load_font
+from core.image_geometry import get_image_layer_crop_box, get_image_layer_render_dimensions
 
 
 def hex_to_rgb(hex_str: str) -> Tuple[int, int, int]:
@@ -153,17 +154,9 @@ def render_image_layer(layer: ImageLayer, canvas_width: int, canvas_height: int)
     if src_img is None:
         return None
 
-    # Calculate target dimensions
-    # Base scale: 1.0 means width is 80% of canvas width (standard App Store phone width)
-    base_target_w = canvas_width * 0.8
+    target_w, target_h = get_image_layer_render_dimensions(layer, src_img.size, canvas_width)
+    src_img = src_img.crop(get_image_layer_crop_box(layer, src_img.size))
     scale = max(0.05, layer.scale)
-    target_w = int(base_target_w * scale)
-    
-    aspect = src_img.height / max(1, src_img.width)
-    target_h = int(target_w * aspect)
-
-    if target_w <= 0 or target_h <= 0:
-        return None
 
     # Resize source image with high-quality LANCZOS
     resized = src_img.resize((target_w, target_h), resample=Image.Resampling.LANCZOS)
@@ -371,10 +364,7 @@ def render_page(
             if layer.frame.enabled and layer.frame.shadow_enabled:
                 src_img = get_cached_image(layer.file_path)
                 if src_img:
-                    base_target_w = cw * 0.8
-                    s = max(0.05, layer.scale)
-                    tw = int(base_target_w * s)
-                    th = int(tw * (src_img.height / max(1, src_img.width)))
+                    tw, th = get_image_layer_render_dimensions(layer, src_img.size, cw)
                     if tw > 0 and th > 0:
                         shadow_img, sx_off, sy_off = create_shadow_image(tw, th, layer.frame)
                         layer_tl_x = int(layer.x - tw / 2)

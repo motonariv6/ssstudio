@@ -3,6 +3,7 @@ import tkinter as tk
 from typing import Optional, Callable, Tuple, List
 from PIL import ImageTk, Image
 
+from core.image_geometry import get_image_layer_render_dimensions
 from core.models import Project, Page, ImageLayer, TextLayer, LayerType
 from core.renderer import (
     render_page, get_cached_image, get_text_layer_metrics
@@ -137,10 +138,7 @@ class CanvasView(tk.Frame):
         if isinstance(layer, ImageLayer):
             src_img = get_cached_image(layer.file_path)
             if src_img:
-                base_w = cw * 0.8
-                s = max(0.05, layer.scale)
-                tw = base_w * s
-                th = tw * (src_img.height / max(1, src_img.width))
+                tw, th = get_image_layer_render_dimensions(layer, src_img.size, cw)
             else:
                 tw, th = 300 * layer.scale, 500 * layer.scale
             return (layer.x - tw / 2, layer.y - th / 2, layer.x + tw / 2, layer.y + th / 2)
