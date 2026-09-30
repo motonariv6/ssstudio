@@ -6,6 +6,7 @@ from PIL import Image
 
 from core.models import Project, Page
 from core.renderer import render_page
+from core.store_validation import validate_project_export
 
 
 def sanitize_filename(name: str) -> str:
@@ -30,11 +31,14 @@ def export_single_page(
     Renders and exports a single page as RGB PNG at canvas resolution.
     Returns (success, message, (width, height)).
     """
+    errors = validate_project_export(project)
+    if errors:
+        return False, "\n".join(errors), (0, 0)
     try:
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         img = render_page(project, page, show_guides=False, scale_factor=1.0)
         
-        # Convert RGBA to high-quality RGB for App Store
+        # Convert RGBA to high-quality RGB for store upload
         rgb_img = Image.new("RGB", img.size, (0, 0, 0))
         rgb_img.paste(img, mask=img.split()[3])
 
@@ -52,6 +56,10 @@ def export_all_pages(
     Exports all pages in the project as numbered PNGs.
     Returns list of (filename, success, message, (width, height)).
     """
+    errors = validate_project_export(project)
+    if errors:
+        return [(get_default_export_filename(i, page.name), False, "\n".join(errors), (0, 0))
+                for i, page in enumerate(project.pages)]
     results = []
     os.makedirs(output_dir, exist_ok=True)
 

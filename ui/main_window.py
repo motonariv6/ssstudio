@@ -5,6 +5,8 @@ from tkinter import ttk, filedialog, messagebox
 from typing import Optional
 
 from core.models import Project, Page, LayerType, CANVAS_PRESETS, THEME_LEMEMO_LUXURY
+from core.store_validation import validate_project_export
+from core.store_profiles import STORE_LABELS
 from core.project import save_project_to_json, load_project_from_json
 from core.templates import TEMPLATE_FACTORIES, apply_theme_to_page
 from core.exporter import export_single_page, export_all_pages, get_default_export_filename
@@ -337,7 +339,16 @@ class MainWindow(tk.Tk):
         else:
             messagebox.showerror("Save Error", msg, parent=self)
 
+    def _validate_export(self):
+        errors = validate_project_export(self.project)
+        if errors:
+            messagebox.showerror("Export Error", "\n".join(errors), parent=self)
+            return False
+        return True
+
     def on_export_current(self):
+        if not self._validate_export():
+            return
         curr_page = self.project.active_page
         page_idx = self.project.active_page_index
         default_name = get_default_export_filename(page_idx, curr_page.name)
@@ -367,6 +378,8 @@ class MainWindow(tk.Tk):
             messagebox.showerror("Export Error", f"Export failed: {msg}", parent=self)
 
     def on_export_all(self):
+        if not self._validate_export():
+            return
         output_dir = filedialog.askdirectory(title="Select Output Directory for Batch Export")
         if not output_dir:
             return
@@ -375,7 +388,7 @@ class MainWindow(tk.Tk):
         msg_confirm = (
             f"Export all {total_pages} pages to:\n{output_dir}\n\n"
             f"Resolution per page: {self.project.canvas_width} × {self.project.canvas_height} px\n"
-            f"Mode: App Store RGB PNG\n\nProceed?"
+            f"Mode: {STORE_LABELS.get(self.project.store, self.project.store)} RGB PNG\n\nProceed?"
         )
         if not messagebox.askyesno("Batch Export Confirmation", msg_confirm, parent=self):
             return
@@ -384,6 +397,11 @@ class MainWindow(tk.Tk):
         success_count = sum(1 for _, ok, _, _ in results if ok)
         
         file_list_str = "\n".join([f"• {fname} ({dims[0]}×{dims[1]})" for fname, ok, _, dims in results if ok])
+
+        failures = "\n".join(f"• {name}: {message}" for name, ok, message, _ in results if not ok)
+        if failures:
+            messagebox.showerror("Batch Export Error", failures, parent=self)
+            return
 
         messagebox.showinfo(
             "Batch Export Complete",

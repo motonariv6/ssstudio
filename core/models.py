@@ -3,13 +3,7 @@ import uuid
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Union, Dict, Any
 
-CANVAS_PRESETS: Dict[str, Dict[str, Any]] = {
-    "iPhone 6.9-inch": {"width": 1290, "height": 2796, "desc": "16 Pro Max / 15 Pro Max"},
-    "iPhone 6.5-inch": {"width": 1242, "height": 2688, "desc": "XS Max / 11 Pro Max"},
-    "iPhone 6.3-inch": {"width": 1206, "height": 2622, "desc": "16 Pro / 15 Pro"},
-    "iPad 13-inch": {"width": 2064, "height": 2752, "desc": "iPad Pro 13-inch (M4)"},
-    "Custom": {"width": 1290, "height": 2796, "desc": "Custom Dimensions"}
-}
+from core.store_profiles import CANVAS_PRESETS, DEFAULT_STORE_PRESETS, get_orientation
 
 GRADIENT_PRESETS: Dict[str, Dict[str, Any]] = {
     "luxury_black": {
@@ -309,6 +303,39 @@ class Project:
     pages: List[Page] = field(default_factory=lambda: [Page(name="01_people")])
     active_page_index: int = 0
 
+    store: Optional[str] = None
+    device_type: Optional[str] = None
+
+    def __post_init__(self):
+        profile = CANVAS_PRESETS.get(self.preset_name)
+        if profile and self.preset_name != "Custom":
+            # A named profile owns its store/device identity. Keep saved dimensions.
+            self.store = profile["store"]
+            self.device_type = profile["device_type"]
+        else:
+            self.store = self.store or "apple_app_store"
+            self.device_type = self.device_type or "custom"
+
+    @property
+    def orientation(self) -> str:
+        # Derive from actual dimensions, including legacy/custom canvas sizes.
+        return get_orientation(self.canvas_width, self.canvas_height)
+
+    def set_store(self, store: str):
+        if store not in DEFAULT_STORE_PRESETS:
+            raise ValueError(f"Unknown store: {store}")
+        if self.preset_name == "Custom":
+            self.store = store
+        else:
+            self.set_preset(DEFAULT_STORE_PRESETS[store])
+
+    def set_custom_size(self, width: int, height: int):
+        if width <= 0 or height <= 0:
+            raise ValueError("Canvas dimensions must be positive")
+        self.preset_name = "Custom"
+        self.canvas_width, self.canvas_height = width, height
+        # Preserve store/device so editing Google Play dimensions keeps validation.
+
     @property
     def active_page(self) -> Page:
         if 0 <= self.active_page_index < len(self.pages):
@@ -326,11 +353,17 @@ class Project:
             self.preset_name = preset_name
             self.canvas_width = CANVAS_PRESETS[preset_name]["width"]
             self.canvas_height = CANVAS_PRESETS[preset_name]["height"]
+            if preset_name != "Custom":
+                self.store = CANVAS_PRESETS[preset_name]["store"]
+                self.device_type = CANVAS_PRESETS[preset_name]["device_type"]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
             "preset_name": self.preset_name,
+            "store": self.store,
+            "device_type": self.device_type,
+            "orientation": self.orientation,
             "canvas_width": self.canvas_width,
             "canvas_height": self.canvas_height,
             "active_page_index": self.active_page_index,
@@ -348,5 +381,7 @@ class Project:
             canvas_width=data.get("canvas_width", 1290),
             canvas_height=data.get("canvas_height", 2796),
             pages=pages,
-            active_page_index=data.get("active_page_index", 0)
+            active_page_index=data.get("active_page_index", 0),
+            store=data.get("store"),
+            device_type=data.get("device_type")
         )
