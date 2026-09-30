@@ -1,13 +1,17 @@
-"""Free crop editor. All edits stay local until Apply."""
+"""Non-destructive crop editor. All edits stay local until Apply."""
 import math
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from PIL import Image, ImageTk
 
 from core.image_geometry import MIN_CROP_FRACTION, get_image_layer_crop_box
 from core.renderer import get_cached_image
 from ui.theme import BG_DARK, TEXT_PRIMARY, ACCENT_COLOR
 from ui.widgets import DarkButton
+from ui.crop_geometry import (
+    ASPECT_MODES, get_aspect_ratio, fit_crop_to_ratio,
+    resize_crop_with_ratio, snap_crop_to_pixels,
+)
 
 
 def open_crop_dialog(parent, layer, on_apply):
@@ -21,17 +25,27 @@ def open_crop_dialog(parent, layer, on_apply):
 class CropDialog(tk.Toplevel):
     def __init__(self, parent, layer, source, on_apply):
         super().__init__(parent)
-        self.title("Crop Image — Free Crop")
+        self.title("Crop Image")
         self.configure(bg=BG_DARK)
         self.transient(parent.winfo_toplevel())
         self.layer, self.source, self.on_apply = layer, source, on_apply
         self.box = list(get_image_layer_crop_box(layer, source.size))
         self._drag = None
+        self._aspect_ratio = None
+        self._aspect_mode = "Free"
         self.resizable(False, False)
         tk.Label(self, text="Drag inside to move; drag an edge or corner to resize.",
                  bg=BG_DARK, fg=TEXT_PRIMARY).pack(padx=16, pady=10)
+        aspect_row = tk.Frame(self, bg=BG_DARK)
+        aspect_row.pack(fill=tk.X, padx=16, pady=(0, 8))
+        tk.Label(aspect_row, text="Aspect:", bg=BG_DARK, fg=TEXT_PRIMARY).pack(side=tk.LEFT)
+        self.aspect_var = tk.StringVar(value="Free")
+        self.aspect_combo = ttk.Combobox(aspect_row, textvariable=self.aspect_var,
+                                         values=ASPECT_MODES, state="readonly", width=12)
+        self.aspect_combo.pack(side=tk.LEFT, padx=8)
+        self.aspect_combo.bind("<<ComboboxSelected>>", self._aspect_changed)
         max_w = min(860, self.winfo_screenwidth() - 100)
-        max_h = min(650, self.winfo_screenheight() - 220)
+        max_h = min(650, self.winfo_screenheight() - 260)
         ratio = min(max_w / source.width, max_h / source.height, 1.0)
         self.preview = source.resize((max(1, round(source.width * ratio)),
                                       max(1, round(source.height * ratio))), Image.Resampling.LANCZOS)
@@ -54,6 +68,22 @@ class CropDialog(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self._draw()
         self.grab_set()
+
+    def _aspect_changed(self, event=None):
+        mode = self.aspect_var.get()
+        ratio = get_aspect_ratio(mode, self.source.size)
+        try:
+            box = fit_crop_to_ratio(self.box, self.source.size, ratio)
+            if ratio is None:
+                box = snap_crop_to_pixels(box, self.source.size)
+        except ValueError as error:
+            self.aspect_var.set(self._aspect_mode)
+            messagebox.showwarning("Aspect Ratio", str(error), parent=self)
+            return
+        self._aspect_mode, self._aspect_ratio = mode, ratio
+        self._drag = None
+        self.box = box
+        self._draw()
 
     def _screen_box(self):
         l, t, r, b = self.box
@@ -101,6 +131,10 @@ class CropDialog(tk.Toplevel):
         if mode == "move":
             dx, dy = max(-l, min(width-r, dx)), max(-t, min(height-b, dy))
             l, t, r, b = l+dx, t+dy, r+dx, b+dy
+        elif getattr(self, "_aspect_ratio", None) is not None:
+            self.box = resize_crop_with_ratio(original, self.source.size, mode, dx, dy, self._aspect_ratio)
+            self._draw()
+            return
         else:
             if "w" in mode:
                 l = max(0, min(r-min_w, l+dx))
@@ -110,18 +144,23 @@ class CropDialog(tk.Toplevel):
                 t = max(0, min(b-min_h, t+dy))
             if "s" in mode:
                 b = min(height, max(t+min_h, b+dy))
-        self.box = [round(l), round(t), round(r), round(b)]
+        self.box = ([l, t, r, b] if getattr(self, "_aspect_ratio", None) is not None
+                    else [round(l), round(t), round(r), round(b)])
         self._draw()
 
     def _release(self, event):
         self._drag = None
 
     def reset(self):
+        self._aspect_mode, self._aspect_ratio = "Free", None
+        if hasattr(self, "aspect_var"):
+            self.aspect_var.set("Free")
+        self._drag = None
         self.box = [0, 0, self.source.width, self.source.height]
         self._draw()
 
     def apply(self):
-        l, t, r, b = self.box
+        l, t, r, b = snap_crop_to_pixels(self.box, self.source.size)
         self.layer.crop_left, self.layer.crop_right = l/self.source.width, r/self.source.width
         self.layer.crop_top, self.layer.crop_bottom = t/self.source.height, b/self.source.height
         self.destroy()
