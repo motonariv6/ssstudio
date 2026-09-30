@@ -60,7 +60,7 @@ macOSローカル環境で動作する、App Store Connect掲載用スクリー�
 
 ### 1. リポジトリの確認
 ```bash
-cd /Users/motonari/Antigravity/SSStudio
+cd PasstoLocalRepo
 ```
 
 ### 2. 仮想環境 (venv) の作成と有効化
