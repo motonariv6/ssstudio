@@ -155,6 +155,48 @@ Crop項目のない旧JSONは画像全体として読み込めます。
 
 ---
 
+## Panorama / Multi-Screen Workspace
+
+Canvas設定の **Workspace** で **Panorama** を選び、**Screens: 2 / 3 / 4** を指定します。
+横方向の連続キャンバスとして、画像・Crop済み画像・テキストを画面境界をまたいで配置できます。
+背景Gradient・SpotlightもWorkspace全体に一度だけ描画されます。
+**Guides** をONにすると境界線と画面番号が表示されます。これらは出力には含まれません。
+
+- 1 Page = 1 Workspace。既存のページタブ・複製・名前変更・削除はそのまま利用できます。
+- Panorama設定はPageごとに保存されるため、3画面のPageと2画面のPageを混在できます。
+- Canvas寸法は1画面分。1080 × 1920・3画面ならWorkspaceは3240 × 1920です。
+- Singleとの切替やProfile変更でレイヤー座標を移動・削除・比例拡縮しません。
+  Singleへ戻すと2画面目以降のレイヤーは画面外になりますが、データは保持されます。
+- 画像Scaleとテキストの自動幅の基準は従来の1画面幅を維持します。
+  横長の見出しは **Max W** を広げて配置できます。
+- PreviewはWorkspace全体をfit表示し、Panoramaでは表示解像度で描画します。
+  最終Exportは実寸で描画します。
+
+**Export PNG** で選択するファイル名はPanoramaのベース名になります。
+`feature.png` を指定した3画面のPageは `feature_01.png`〜`feature_03.png` を生成します。
+**Export All PNGs** はページ順・画面順に、例えば以下を生成します。
+
+```text
+01_people_01.png
+01_people_02.png
+01_people_03.png
+02_memory_01.png
+02_memory_02.png
+```
+
+各PNGはCanvas設定と同じ寸法のRGB画像です。
+Workspaceを一度描画してから整数座標でsliceするため、画面境界にgapやoverlapは発生しません。
+Google Playの寸法検証は各sliceの寸法へ適用します。
+既存の出力ファイルがある場合は書き込み前に上書きを確認します。
+Single Pageは従来どおり1つのPNGを出力します。
+
+保存形式はPage内の `panorama: {enabled, screen_count, direction}` を追加しています。
+画面幅・高さはProjectの `canvas_width` / `canvas_height` を共通の情報源とし、
+Profile変更時にWorkspace寸法が自動更新されます。Panorama情報のない旧JSONはSingleとして読み込みます。
+M3は横方向の2〜4画面のみ対応し、縦方向や画面ごとの独立サイズ・背景は対象外です。
+
+---
+
 ## 📁 ディレクトリ構成
 
 ```text

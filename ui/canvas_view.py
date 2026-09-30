@@ -3,6 +3,7 @@ import tkinter as tk
 from typing import Optional, Callable, Tuple, List
 from PIL import ImageTk, Image
 
+from core.panorama import get_workspace_geometry
 from core.image_geometry import get_image_layer_render_dimensions
 from core.models import Project, Page, ImageLayer, TextLayer, LayerType
 from core.renderer import (
@@ -84,8 +85,8 @@ class CanvasView(tk.Frame):
         if not project or not page:
             return
 
-        proj_w = project.canvas_width
-        proj_h = project.canvas_height
+        geometry = get_workspace_geometry(project, page)
+        proj_w, proj_h = geometry.width, geometry.height
 
         # Calculate best fit scale with margin
         margin = 30

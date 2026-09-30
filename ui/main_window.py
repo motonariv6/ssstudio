@@ -9,7 +9,7 @@ from core.store_validation import validate_project_export
 from core.store_profiles import STORE_LABELS
 from core.project import save_project_to_json, load_project_from_json
 from core.templates import TEMPLATE_FACTORIES, apply_theme_to_page
-from core.exporter import export_single_page, export_all_pages, get_default_export_filename
+from core.exporter import export_single_page, export_all_pages, get_default_export_filename, get_page_output_paths, get_all_output_paths
 from ui.theme import (
     BG_DARK, BG_SECONDARY, BG_TERTIARY, TEXT_PRIMARY, TEXT_SECONDARY,
     ACCENT_COLOR, ACCENT_LEMEMO, FONT_BOLD, FONT_SMALL, FONT_TITLE, FONT_SYSTEM,
@@ -355,7 +355,7 @@ class MainWindow(tk.Tk):
         
         # Ask output file path
         output_path = filedialog.asksaveasfilename(
-            title=f"Export Current Page ({self.project.canvas_width} × {self.project.canvas_height} px)",
+            title=f"Export Current Page ({self.project.canvas_width} × {self.project.canvas_height} px per screen)",
             initialfile=default_name,
             defaultextension=".png",
             filetypes=[("PNG Image", "*.png")]
@@ -363,15 +363,18 @@ class MainWindow(tk.Tk):
         if not output_path:
             return
 
-        if os.path.exists(output_path):
-            if not messagebox.askyesno("Overwrite Confirmation", f"File '{os.path.basename(output_path)}' already exists.\nDo you want to overwrite it?", parent=self):
-                return
+        paths = get_page_output_paths(self.project, curr_page, output_path)
+        existing = [os.path.basename(path) for path in paths if os.path.exists(path)]
+        if existing and not messagebox.askyesno(
+            "Overwrite Confirmation", "Replace existing files?\n" + "\n".join(existing), parent=self
+        ):
+            return
 
-        ok, msg, dims = export_single_page(self.project, curr_page, output_path)
+        ok, msg, dims = export_single_page(self.project, curr_page, output_path, overwrite=bool(existing))
         if ok:
             messagebox.showinfo(
                 "Export Complete",
-                f"Successfully exported page:\n\nResolution: {dims[0]} × {dims[1]} px\nPath: {output_path}",
+                f"Successfully exported {len(paths)} PNG(s):\n\nResolution: {dims[0]} × {dims[1]} px\n" + "\n".join(paths),
                 parent=self
             )
         else:
@@ -393,7 +396,13 @@ class MainWindow(tk.Tk):
         if not messagebox.askyesno("Batch Export Confirmation", msg_confirm, parent=self):
             return
 
-        results = export_all_pages(self.project, output_dir)
+        paths = get_all_output_paths(self.project, output_dir)
+        existing = [os.path.basename(path) for path in paths if os.path.exists(path)]
+        if existing and not messagebox.askyesno(
+            "Overwrite Confirmation", "Replace existing files?\n" + "\n".join(existing), parent=self
+        ):
+            return
+        results = export_all_pages(self.project, output_dir, overwrite=bool(existing))
         success_count = sum(1 for _, ok, _, _ in results if ok)
         
         file_list_str = "\n".join([f"• {fname} ({dims[0]}×{dims[1]})" for fname, ok, _, dims in results if ok])
@@ -405,6 +414,6 @@ class MainWindow(tk.Tk):
 
         messagebox.showinfo(
             "Batch Export Complete",
-            f"Successfully exported {success_count} of {total_pages} pages:\n\n{file_list_str}",
+            f"Successfully exported {success_count} of {len(paths)} PNGs:\n\n{file_list_str}",
             parent=self
         )

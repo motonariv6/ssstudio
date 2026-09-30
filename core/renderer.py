@@ -11,6 +11,8 @@ from core.models import (
     GradientConfig, FrameConfig, CANVAS_PRESETS
 )
 from core.fonts import load_font
+from core.panorama import get_workspace_geometry
+from dataclasses import replace
 from core.image_geometry import get_image_layer_crop_box, get_image_layer_render_dimensions
 
 
@@ -145,7 +147,7 @@ def create_shadow_image(width: int, height: int, frame: FrameConfig) -> Tuple[Im
     return shadow_blurred, offset_x, offset_y
 
 
-def render_image_layer(layer: ImageLayer, canvas_width: int, canvas_height: int) -> Optional[Tuple[Image.Image, int, int]]:
+def render_image_layer(layer: ImageLayer, canvas_width: int, canvas_height: int, render_scale: float = 1.0) -> Optional[Tuple[Image.Image, int, int]]:
     """
     Renders an ImageLayer including device frame (corner radius, border, shadow).
     Returns (rendered_rgba_layer, top_left_x, top_left_y) or None if no image.
@@ -154,7 +156,9 @@ def render_image_layer(layer: ImageLayer, canvas_width: int, canvas_height: int)
     if src_img is None:
         return None
 
-    target_w, target_h = get_image_layer_render_dimensions(layer, src_img.size, canvas_width)
+    full_w, full_h = get_image_layer_render_dimensions(layer, src_img.size, canvas_width)
+    target_w = max(1, int(full_w * render_scale))
+    target_h = max(1, int(full_h * render_scale))
     src_img = src_img.crop(get_image_layer_crop_box(layer, src_img.size))
     scale = max(0.05, layer.scale)
 
@@ -164,14 +168,14 @@ def render_image_layer(layer: ImageLayer, canvas_width: int, canvas_height: int)
     frame = layer.frame
     if frame.enabled:
         # Apply corner radius
-        r = min(int(frame.corner_radius * scale), min(target_w, target_h) // 2)
+        r = min(int(frame.corner_radius * scale * render_scale), min(target_w, target_h) // 2)
         if r > 0:
             mask = create_rounded_mask(target_w, target_h, r)
             resized.putalpha(ImageOps.invert(ImageOps.invert(mask)))
 
         # Draw border if specified
         if frame.border_width > 0:
-            bw = max(1, int(frame.border_width * scale))
+            bw = max(1, int(frame.border_width * scale * render_scale))
             b_rgb = hex_to_rgb(frame.border_color)
             border_draw = ImageDraw.Draw(resized)
             border_draw.rounded_rectangle(
@@ -188,15 +192,15 @@ def render_image_layer(layer: ImageLayer, canvas_width: int, canvas_height: int)
         resized.putalpha(alpha)
 
     # Top-left position on canvas (layer.x, layer.y is center of image)
-    top_left_x = int(layer.x - target_w / 2)
-    top_left_y = int(layer.y - target_h / 2)
+    top_left_x = int(int(layer.x - full_w / 2) * render_scale)
+    top_left_y = int(int(layer.y - full_h / 2) * render_scale)
 
     # Rotation
     if abs(layer.rotation) > 0.01:
         resized = resized.rotate(-layer.rotation, resample=Image.Resampling.BICUBIC, expand=True)
         # Re-center rotated image
-        top_left_x = int(layer.x - resized.width / 2)
-        top_left_y = int(layer.y - resized.height / 2)
+        top_left_x = int(layer.x * render_scale - resized.width / 2)
+        top_left_y = int(layer.y * render_scale - resized.height / 2)
 
     return resized, top_left_x, top_left_y
 
@@ -256,7 +260,7 @@ def get_text_layer_metrics(layer: TextLayer, canvas_width: int) -> Tuple[int, in
     return total_w, total_h, lines, font
 
 
-def render_text_layer(layer: TextLayer, canvas_width: int, canvas_height: int) -> Optional[Tuple[Image.Image, int, int]]:
+def render_text_layer(layer: TextLayer, canvas_width: int, canvas_height: int, render_scale: float = 1.0) -> Optional[Tuple[Image.Image, int, int]]:
     """
     Renders a TextLayer to an RGBA image.
     Returns (text_image, top_left_x, top_left_y).
@@ -269,7 +273,10 @@ def render_text_layer(layer: TextLayer, canvas_width: int, canvas_height: int) -
         return None
 
     pad = 20
-    text_img = Image.new("RGBA", (total_w + pad * 2, total_h + pad * 2), (0, 0, 0, 0))
+    text_img = Image.new("RGBA", (max(1, int((total_w + pad * 2) * render_scale)),
+                                  max(1, int((total_h + pad * 2) * render_scale))), (0, 0, 0, 0))
+    render_font = font if render_scale == 1 else load_font(
+        layer.font_family, max(1, round(layer.font_size * render_scale)), layer.font_weight)
     draw = ImageDraw.Draw(text_img)
 
     color_rgb = hex_to_rgb(layer.color)
@@ -287,13 +294,13 @@ def render_text_layer(layer: TextLayer, canvas_width: int, canvas_height: int) -
             lx = pad
 
         ly = pad + i * line_height
-        draw.text((lx, ly), line, font=font, fill=(*color_rgb, 255))
+        draw.text((lx * render_scale, ly * render_scale), line, font=render_font, fill=(*color_rgb, 255))
 
     # Top-left calculation based on layer.x, layer.y (center X, top Y)
     top_left_x = int(layer.x - (total_w + pad * 2) / 2)
     top_left_y = int(layer.y - pad)
 
-    return text_img, top_left_x, top_left_y
+    return text_img, int(top_left_x * render_scale), int(top_left_y * render_scale)
 
 
 def draw_preview_guides(canvas_img: Image.Image, canvas_width: int, canvas_height: int) -> Image.Image:
@@ -351,8 +358,12 @@ def render_page(
     cw = project.canvas_width
     ch = project.canvas_height
 
-    # 1. Background
-    canvas = create_gradient_background(cw, ch, page.background)
+    geometry = get_workspace_geometry(project, page)
+    # Keep Single's existing render path. Panorama allocates only preview-sized
+    # buffers; layer layout still uses logical per-screen pixels.
+    render_scale = min(1.0, scale_factor) if page.panorama.enabled and scale_factor > 0 else 1.0
+    rw, rh = max(1, int(geometry.width * render_scale)), max(1, int(geometry.height * render_scale))
+    canvas = create_gradient_background(rw, rh, page.background)
 
     # 2. Render Layers in order
     for layer in page.layers:
@@ -366,33 +377,47 @@ def render_page(
                 if src_img:
                     tw, th = get_image_layer_render_dimensions(layer, src_img.size, cw)
                     if tw > 0 and th > 0:
-                        shadow_img, sx_off, sy_off = create_shadow_image(tw, th, layer.frame)
-                        layer_tl_x = int(layer.x - tw / 2)
-                        layer_tl_y = int(layer.y - th / 2)
-                        shadow_x = layer_tl_x + sx_off
-                        shadow_y = layer_tl_y + sy_off
+                        frame = layer.frame
+                        if render_scale != 1:
+                            frame = replace(frame, **{name: getattr(frame, name) * render_scale for name in
+                                ("corner_radius", "shadow_blur", "shadow_offset_x", "shadow_offset_y")})
+                        shadow_img, sx_off, sy_off = create_shadow_image(
+                            max(1, int(tw * render_scale)), max(1, int(th * render_scale)), frame)
+                        layer_tl_x = int(int(layer.x - tw / 2) * render_scale)
+                        layer_tl_y = int(int(layer.y - th / 2) * render_scale)
+                        shadow_x = int(layer_tl_x + sx_off)
+                        shadow_y = int(layer_tl_y + sy_off)
                         canvas.alpha_composite(shadow_img, (shadow_x, shadow_y))
 
             # Render image layer
-            res = render_image_layer(layer, cw, ch)
+            res = render_image_layer(layer, cw, ch, render_scale=render_scale)
             if res is not None:
                 img_layer, lx, ly = res
                 canvas.alpha_composite(img_layer, (lx, ly))
 
         elif isinstance(layer, TextLayer):
-            res = render_text_layer(layer, cw, ch)
+            res = render_text_layer(layer, cw, ch, render_scale=render_scale)
             if res is not None:
                 txt_layer, lx, ly = res
                 canvas.alpha_composite(txt_layer, (lx, ly))
 
     # 3. Overlay guides if requested (preview only)
     if show_guides:
-        canvas = draw_preview_guides(canvas, cw, ch)
+        if page.panorama.enabled:
+            draw = ImageDraw.Draw(canvas)
+            for boundary in geometry.boundaries:
+                x = round(boundary * render_scale)
+                draw.line((x, 0, x, rh), fill=(100, 200, 255, 220), width=2)
+            for number, (left, _, right, _) in enumerate(geometry.screen_rectangles, 1):
+                draw.text((round((left + right) / 2 * render_scale), 8), str(number),
+                          anchor="mt", fill="white")
+        else:
+            canvas = draw_preview_guides(canvas, cw, ch)
 
     # 4. Optional scaling
-    if scale_factor != 1.0 and scale_factor > 0:
-        pw = max(1, int(cw * scale_factor))
-        ph = max(1, int(ch * scale_factor))
+    if scale_factor != render_scale and scale_factor > 0:
+        pw = max(1, int(geometry.width * scale_factor))
+        ph = max(1, int(geometry.height * scale_factor))
         return canvas.resize((pw, ph), resample=Image.Resampling.LANCZOS)
 
     return canvas
