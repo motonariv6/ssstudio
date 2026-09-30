@@ -1,17 +1,18 @@
-# SSStudio — App Store Screenshot Composer
+# SSStudio — App Store / Google Play Screenshot Composer
 
-macOSローカル環境で動作する、App Store Connect掲載用スクリーンショット画像を高速・高品質に作成・量産するためのGUIデスクトップアプリケーションです。
+macOSローカル環境で動作する、Apple App Store / Google Play掲載用スクリーンショット画像を高速・高品質に作成・量産するためのGUIデスクトップアプリケーションです。
 
 ---
 
 ## 🌟 主な特徴
 
-1. **App Store プリセット対応**
+1. **Apple App Store / Google Play プリセット対応**
    - iPhone 6.9-inch (1290 × 2796)
    - iPhone 6.5-inch (1242 × 2688)
    - iPhone 6.3-inch (1206 × 2622)
    - iPad 13-inch (2064 × 2752)
-   - カスタム解像度入力対応
+   - Google Play Phone / Tablet: Portrait (1080 × 1920)、Landscape (1920 × 1080)
+   - Storeを保持するカスタム解像度入力対応
 
 2. **高級黒背景グラデーション（Luxury Black Preset）**
    - 落ち着いた深みのある黒グラデーション（縦・横・斜め）
@@ -60,7 +61,7 @@ macOSローカル環境で動作する、App Store Connect掲載用スクリー�
 
 ### 1. リポジトリの確認
 ```bash
-cd /Users/motonari/Antigravity/SSStudio
+cd ssstudio
 ```
 
 ### 2. 仮想環境 (venv) の作成と有効化
@@ -88,7 +89,7 @@ python app.py
 
 ### 画面構成（3カラムレイアウト）
 - **左側パネル（Canvas & Background）**:
-  - **Canvas Preset & Size**: 端末プリセット選択（iPhone 6.9/6.5/6.3, iPad 13, Custom）、カスタムサイズ変更
+  - **Canvas Preset & Size**: Store選択（Apple App Store / Google Play）、端末プリセット選択、カスタムサイズ変更
   - **Background & Gradient**: 高級黒グラデーション、開始/終了色、方向、ラジアルスポットライトの調整
 - **中央エリア（Page Bar & Preview Canvas）**:
   - **上部ページバー**: `+ Add Page`, `⧉ Duplicate Page`, `✏ Rename`, `✕ Delete`, ページ切り替え
@@ -103,6 +104,39 @@ python app.py
   - `📐 Guides`: セーフマージン（5%/10%）や見出しエリアのガイド表示切替（エクスポート画像には含まれません）
   - `Export PNG`: 現在のページを実寸PNG出力
   - `⚡ Export All PNGs`: 全ページを連番PNGとして一括書き出し
+
+---
+
+## Google Play / Android スクリーンショット
+
+左パネルの **Store** で **Google Play** を選び、**Preset** を選択します。
+
+| Preset | サイズ | device_type | orientation |
+| --- | --- | --- | --- |
+| Phone Portrait | 1080 × 1920 | phone | portrait |
+| Phone Landscape | 1920 × 1080 | phone | landscape |
+| Tablet Portrait | 1080 × 1920 | tablet | portrait |
+| Tablet Landscape | 1920 × 1080 | tablet | landscape |
+
+PhoneとTabletは同じ解像度でも別Profileとして扱います。
+Profileは `name`、`store`、`device_type`、`orientation`、`width`、`height`、`description` を持ちます。
+Project JSONには従来の `preset_name`・寸法に加えてStore・端末種別・向きを保存します。
+向きは実際の寸法から求め、正方形は `square` とします。
+Store情報のない旧Projectも読み込め、既存Appleの寸法やM1 Cropは維持されます。
+
+**Size → Apply** でCustomに切り替えると、現在のStoreと端末種別を保持します。
+CustomのままStoreを切り替えた場合は寸法を保持します。
+既存と同様、Preset一覧から **Custom** を選択した場合の初期寸法は1290 × 2796です。
+Google Playで使用する場合は、次の条件を満たす寸法に変更してください。
+
+**Export PNG / Export All PNGs** は、Google Play（Customを含む）に対して以下を検証します。
+
+- 幅・高さがそれぞれ **320〜3840 px**（境界値を含む）
+- **長辺 ≤ 短辺 × 2**（ちょうど2:1は有効）
+
+不適合の場合は理由を表示し、ファイルを書き出さずに停止します。
+出力は従来どおりRGB PNGです。Apple向けExportへの新しい寸法制限はありません。
+M2はPhone / Tabletの基本スクリーンショット対応で、7-inch / 10-inch専用フローやFeature Graphic生成は含みません。
 
 ---
 

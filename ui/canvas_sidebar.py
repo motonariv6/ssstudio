@@ -10,6 +10,7 @@ from ui.theme import (
     BTN_BG_DEFAULT, BTN_BG_HOVER, BTN_FG, BTN_ACCENT_BG, BTN_ACCENT_HOVER
 )
 from ui.widgets import DarkButton
+from core.store_profiles import STORE_LABELS, get_store_preset_labels
 
 
 class CanvasSidebar(tk.Frame):
@@ -79,6 +80,16 @@ class CanvasSidebar(tk.Frame):
     def _build_canvas_section(self):
         card = self._create_section_card("📐 Canvas Preset & Size")
 
+        store_row = tk.Frame(card, bg=BG_SECONDARY)
+        store_row.pack(fill=tk.X, pady=2)
+        tk.Label(store_row, text="Store:", font=FONT_SMALL, fg=TEXT_SECONDARY,
+                 bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
+        self.store_var = tk.StringVar()
+        self.store_combo = ttk.Combobox(store_row, textvariable=self.store_var,
+                                        values=list(STORE_LABELS.values()), state="readonly")
+        self.store_combo.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.store_combo.bind("<<ComboboxSelected>>", self._on_store_changed)
+
         row1 = tk.Frame(card, bg=BG_SECONDARY)
         row1.pack(fill=tk.X, pady=2)
         tk.Label(row1, text="Preset:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
@@ -87,7 +98,7 @@ class CanvasSidebar(tk.Frame):
         self.canvas_preset_combo = ttk.Combobox(
             row1,
             textvariable=self.canvas_preset_var,
-            values=list(CANVAS_PRESETS.keys()),
+            values=[],
             state="readonly"
         )
         self.canvas_preset_combo.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -111,25 +122,37 @@ class CanvasSidebar(tk.Frame):
         )
         btn_apply_size.pack(side=tk.RIGHT, padx=2)
 
-    def _on_canvas_preset_changed(self, event=None):
-        preset_name = self.canvas_preset_var.get()
+    def _refresh_canvas_profile(self):
         proj = self.get_project()
-        proj.set_preset(preset_name)
+        self.store_var.set(STORE_LABELS.get(proj.store, proj.store))
+        labels = get_store_preset_labels(proj.store)
+        self.canvas_preset_combo.configure(values=list(labels))
+        label = next((label for label, key in labels.items() if key == proj.preset_name), proj.preset_name)
+        self.canvas_preset_var.set(label)
         self.canvas_w_var.set(str(proj.canvas_width))
         self.canvas_h_var.set(str(proj.canvas_height))
+
+    def _on_store_changed(self, event=None):
+        store = next(key for key, label in STORE_LABELS.items() if label == self.store_var.get())
+        self.get_project().set_store(store)
+        self._refresh_canvas_profile()
         self.on_change()
+
+    def _on_canvas_preset_changed(self, event=None):
+        proj = self.get_project()
+        preset_name = get_store_preset_labels(proj.store).get(self.canvas_preset_var.get())
+        if preset_name is not None:
+            proj.set_preset(preset_name)
+            self._refresh_canvas_profile()
+            self.on_change()
 
     def _apply_custom_canvas_size(self):
         try:
             w = int(self.canvas_w_var.get())
             h = int(self.canvas_h_var.get())
-            if w > 0 and h > 0:
-                proj = self.get_project()
-                proj.preset_name = "Custom"
-                proj.canvas_width = w
-                proj.canvas_height = h
-                self.canvas_preset_var.set("Custom")
-                self.on_change()
+            self.get_project().set_custom_size(w, h)
+            self._refresh_canvas_profile()
+            self.on_change()
         except ValueError:
             messagebox.showerror("Invalid Size", "Please enter positive integers for canvas width and height.")
 
@@ -255,9 +278,7 @@ class CanvasSidebar(tk.Frame):
         if not proj or not page:
             return
 
-        self.canvas_preset_var.set(proj.preset_name)
-        self.canvas_w_var.set(str(proj.canvas_width))
-        self.canvas_h_var.set(str(proj.canvas_height))
+        self._refresh_canvas_profile()
 
         # Background
         bg_name = GRADIENT_PRESETS.get(page.background.preset, {}).get("name", "Custom")

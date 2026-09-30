@@ -20,12 +20,6 @@ Repository:
 motonariv6/ssstudio
 ```
 
-Primary local development path:
-
-```text
-/Users/motonari/Antigravity/SSStudio
-```
-
 Default branch:
 
 ```text
