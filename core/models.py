@@ -3,6 +3,7 @@ import uuid
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Union, Dict, Any
 
+from core.panorama import PanoramaConfig
 from core.store_profiles import CANVAS_PRESETS, DEFAULT_STORE_PRESETS, get_orientation
 
 GRADIENT_PRESETS: Dict[str, Dict[str, Any]] = {
@@ -273,12 +274,14 @@ class Page:
     name: str = "Page 1"
     background: GradientConfig = field(default_factory=GradientConfig)
     layers: List[LayerType] = field(default_factory=list)
+    panorama: PanoramaConfig = field(default_factory=PanoramaConfig)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
             "background": self.background.to_dict(),
+            "panorama": self.panorama.to_dict(),
             "layers": [layer.to_dict() for layer in self.layers]
         }
 
@@ -291,7 +294,8 @@ class Page:
                 layers.append(ImageLayer.from_dict(l_data))
             elif l_data.get("layer_type") == "text":
                 layers.append(TextLayer.from_dict(l_data))
-        return cls(id=data.get("id", str(uuid.uuid4())), name=data.get("name", "Page"), background=bg, layers=layers)
+        return cls(id=data.get("id", str(uuid.uuid4())), name=data.get("name", "Page"), background=bg, layers=layers,
+                   panorama=PanoramaConfig.from_dict(data.get("panorama", {})))
 
 
 @dataclass

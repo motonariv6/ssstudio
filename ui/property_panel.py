@@ -10,6 +10,7 @@ from core.models import (
     CANVAS_PRESETS, GRADIENT_PRESETS, TEXT_STYLE_PRESETS,
     FrameConfig
 )
+from core.panorama import get_workspace_geometry
 from core.fonts import get_available_font_names
 from ui.theme import (
     BG_DARK, BG_SECONDARY, BG_TERTIARY, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED,
@@ -18,6 +19,7 @@ from ui.theme import (
     BTN_DANGER_BG, BTN_DANGER_HOVER
 )
 from ui.widgets import DarkButton
+from ui.workspace_controls import WorkspaceControls
 from core.store_profiles import STORE_LABELS, get_store_preset_labels
 from ui.crop_dialog import open_crop_dialog
 
@@ -130,8 +132,11 @@ class PropertyPanel(tk.Frame):
             command=self._apply_custom_canvas_size
         )
         btn_apply_size.pack(side=tk.RIGHT, padx=2)
+        self.workspace_controls = WorkspaceControls(card, self.get_active_page, self.on_change)
+        self.workspace_controls.pack(fill=tk.X, pady=(8, 2))
 
     def _refresh_canvas_profile(self):
+        self.workspace_controls.refresh()
         proj = self.get_project()
         self.store_var.set(STORE_LABELS.get(proj.store, proj.store))
         labels = get_store_preset_labels(proj.store)
@@ -810,7 +815,10 @@ class PropertyPanel(tk.Frame):
         wrap_row.pack(fill=tk.X, pady=2)
         tk.Label(wrap_row, text="Max W:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
         wrap_slider = tk.Scale(
-            wrap_row, from_=300, to=1500, resolution=20, orient=tk.HORIZONTAL,
+            wrap_row, from_=300, to=max(1500, layer.max_width,
+                get_workspace_geometry(self.get_project(), self.get_active_page()).width
+                if self.get_active_page().panorama.enabled else 1500),
+            resolution=20, orient=tk.HORIZONTAL,
             bg=BG_SECONDARY, fg=TEXT_PRIMARY, highlightthickness=0,
             command=lambda v: self._update_layer_prop(layer, "max_width", int(v))
         )

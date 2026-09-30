@@ -10,6 +10,7 @@ from ui.theme import (
     BTN_BG_DEFAULT, BTN_BG_HOVER, BTN_FG, BTN_ACCENT_BG, BTN_ACCENT_HOVER
 )
 from ui.widgets import DarkButton
+from ui.workspace_controls import WorkspaceControls
 from core.store_profiles import STORE_LABELS, get_store_preset_labels
 
 
@@ -121,8 +122,11 @@ class CanvasSidebar(tk.Frame):
             command=self._apply_custom_canvas_size
         )
         btn_apply_size.pack(side=tk.RIGHT, padx=2)
+        self.workspace_controls = WorkspaceControls(card, self.get_active_page, self.on_change)
+        self.workspace_controls.pack(fill=tk.X, pady=(8, 2))
 
     def _refresh_canvas_profile(self):
+        self.workspace_controls.refresh()
         proj = self.get_project()
         self.store_var.set(STORE_LABELS.get(proj.store, proj.store))
         labels = get_store_preset_labels(proj.store)
