@@ -4,12 +4,13 @@ import os
 import functools
 from typing import Tuple, List, Optional, Dict
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageOps, ImageColor
+from PIL import Image, ImageDraw, ImageFilter, ImageOps, ImageColor, ImageChops
 
 from core.models import (
     Project, Page, ImageLayer, TextLayer, LayerType,
     GradientConfig, FrameConfig, CANVAS_PRESETS
 )
+from core.image_effects import apply_bottom_fade, create_alpha_shadow
 from core.fonts import load_font
 from core.panorama import get_workspace_geometry
 from dataclasses import replace
@@ -165,13 +166,20 @@ def render_image_layer(layer: ImageLayer, canvas_width: int, canvas_height: int,
     # Resize source image with high-quality LANCZOS
     resized = src_img.resize((target_w, target_h), resample=Image.Resampling.LANCZOS)
 
+    effects = layer.effects.from_dict(layer.effects.to_dict())
+    resized = apply_bottom_fade(resized, effects)
+    effect_shadow = create_alpha_shadow(resized, effects, scale * render_scale)
+
     frame = layer.frame
     if frame.enabled:
         # Apply corner radius
         r = min(int(frame.corner_radius * scale * render_scale), min(target_w, target_h) // 2)
         if r > 0:
             mask = create_rounded_mask(target_w, target_h, r)
-            resized.putalpha(ImageOps.invert(ImageOps.invert(mask)))
+            if effects.fade_enabled or effects.shadow_enabled:
+                resized.putalpha(ImageChops.multiply(resized.getchannel("A"), mask))
+            else:
+                resized.putalpha(ImageOps.invert(ImageOps.invert(mask)))
 
         # Draw border if specified
         if frame.border_width > 0:
@@ -185,6 +193,17 @@ def render_image_layer(layer: ImageLayer, canvas_width: int, canvas_height: int,
                 width=bw
             )
 
+    # Symmetric padding keeps the source center fixed when the whole group rotates.
+    pad_x = pad_y = 0
+    if effect_shadow is not None:
+        shadow, sx, sy = effect_shadow
+        pad_x = max(0, -sx, sx + shadow.width - target_w)
+        pad_y = max(0, -sy, sy + shadow.height - target_h)
+        group = Image.new("RGBA", (target_w + 2 * pad_x, target_h + 2 * pad_y))
+        group.alpha_composite(shadow, (pad_x + sx, pad_y + sy))
+        group.alpha_composite(resized, (pad_x, pad_y))
+        resized = group
+
     # Opacity
     if layer.opacity < 1.0:
         alpha = resized.split()[3]
@@ -194,6 +213,9 @@ def render_image_layer(layer: ImageLayer, canvas_width: int, canvas_height: int,
     # Top-left position on canvas (layer.x, layer.y is center of image)
     top_left_x = int(int(layer.x - full_w / 2) * render_scale)
     top_left_y = int(int(layer.y - full_h / 2) * render_scale)
+
+    top_left_x -= pad_x
+    top_left_y -= pad_y
 
     # Rotation
     if abs(layer.rotation) > 0.01:

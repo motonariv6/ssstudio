@@ -22,6 +22,7 @@ from ui.widgets import DarkButton
 from ui.workspace_controls import WorkspaceControls
 from core.store_profiles import STORE_LABELS, get_store_preset_labels
 from ui.crop_dialog import open_crop_dialog
+from ui.image_effects_controls import build_image_effects
 
 
 class PropertyPanel(tk.Frame):
@@ -576,6 +577,8 @@ class PropertyPanel(tk.Frame):
         )
         rot_slider.set(int(layer.rotation))
         rot_slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        build_image_effects(self, layer)
 
         # Device Frame Sub-section
         frame_box = tk.LabelFrame(self.inspector_container, text="📱 Device Frame & Shadow", bg=BG_SECONDARY, fg=TEXT_PRIMARY, font=FONT_BOLD, padx=8, pady=6)
