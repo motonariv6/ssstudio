@@ -524,6 +524,11 @@ class PropertyPanel(tk.Frame):
     def _build_image_layer_inspector(self, layer: ImageLayer):
         crop = inspector_section(self, "image", "Crop")
 
+        if layer.placeholder_id and not layer.file_path:
+            tk.Label(crop, text="Placeholder: " + (layer.placeholder_label or layer.name),
+                     bg=BG_SECONDARY, fg=TEXT_SECONDARY, font=FONT_SMALL,
+                     wraplength=280, anchor=tk.W).pack(fill=tk.X, pady=2)
+
         # Image Source Row
         row_img = tk.Frame(crop, bg=BG_SECONDARY)
         row_img.pack(fill=tk.X, pady=4)
@@ -651,8 +656,9 @@ class PropertyPanel(tk.Frame):
             filetypes=[("Image Files", "*.png *.jpg *.jpeg *.webp")]
         )
         if path:
+            if not (layer.placeholder_id and not layer.file_path):
+                layer.reset_crop()
             layer.file_path = path
-            layer.reset_crop()
             self.refresh()
             self.on_change()
 

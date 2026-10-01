@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, simpledialog
 from typing import Optional
 
 from core.models import Project, Page, LayerType, CANVAS_PRESETS, THEME_LEMEMO_LUXURY
@@ -9,6 +9,9 @@ from core.store_validation import validate_project_export
 from core.store_profiles import STORE_LABELS
 from core.project import save_project_to_json, load_project_from_json
 from core.templates import TEMPLATE_FACTORIES, apply_theme_to_page
+from core.template_format import (TemplateError, export_template_package, load_template_package,
+                                  apply_template_to_page, template_compatibility_warnings)
+from core.exporter import sanitize_filename
 from core.exporter import export_single_page, export_all_pages, get_default_export_filename, get_page_output_paths, get_all_output_paths
 from ui.theme import (
     BG_DARK, BG_SECONDARY, BG_TERTIARY, TEXT_PRIMARY, TEXT_SECONDARY,
@@ -92,6 +95,9 @@ class MainWindow(tk.Tk):
                 label=f"Apply {name}",
                 command=lambda t_name=name: self.on_apply_template(t_name)
             )
+        template_menu.add_separator()
+        template_menu.add_command(label="Import Template...", command=self.on_import_template)
+        template_menu.add_command(label="Export Current Page as Template...", command=self.on_export_template)
         menubar.add_cascade(label="Template", menu=template_menu)
 
         self.config(menu=menubar)
@@ -280,6 +286,53 @@ class MainWindow(tk.Tk):
             active_p.layers = new_p.layers
             self.selected_layer = None
             self.refresh_all()
+
+    def on_export_template(self):
+        name = simpledialog.askstring("Export Template", "Template Name:", parent=self)
+        if name is None:
+            return
+        name = name.strip()
+        if not name:
+            messagebox.showerror("Template Export Error", "Template Name cannot be empty.", parent=self)
+            return
+        directory = filedialog.askdirectory(title="Choose Parent Directory for Template Package", parent=self)
+        if not directory:
+            return
+        folder_name = sanitize_filename(name).strip(". ") or "template"
+        destination = os.path.join(directory, folder_name)
+        try:
+            export_template_package(self.project, self.project.active_page, destination, name)
+        except TemplateError as exc:
+            messagebox.showerror("Template Export Error", str(exc), parent=self)
+            return
+        messagebox.showinfo("Template Exported", f"Saved template package to:\n{destination}\n\n"
+                            "Screenshots are replaced by placeholders and omitted from preview.png.\n"
+                            "Text is retained; review it before sharing.", parent=self)
+
+    def on_import_template(self):
+        path = filedialog.askopenfilename(title="Import Template: Select template.json", parent=self,
+                                         filetypes=[("Template Manifest", "*.json")])
+        if not path:
+            return
+        try:
+            template = load_template_package(path)
+        except TemplateError as exc:
+            messagebox.showerror("Template Import Error", str(exc), parent=self)
+            return
+        warnings = template_compatibility_warnings(template, self.project)
+        message = f"Apply template '{template.name}' to current page?\nThis will replace the current page layout."
+        if warnings:
+            message += "\n\n" + "\n".join(warnings) + "\nProject Store and Canvas settings will stay as configured."
+        if not messagebox.askyesno("Apply Imported Template", message, parent=self):
+            return
+        try:
+            apply_template_to_page(template, self.project.active_page)
+        except TemplateError as exc:
+            messagebox.showerror("Template Apply Error", str(exc), parent=self)
+            return
+        self.selected_layer = None
+        self.canvas_view.set_selected_layer(None)
+        self.refresh_all()
 
     def on_apply_luxury_theme(self):
         active_p = self.project.active_page
