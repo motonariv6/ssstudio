@@ -18,8 +18,10 @@ from ui.theme import (
     BTN_DANGER_BG, BTN_DANGER_HOVER
 )
 from ui.widgets import DarkButton
+from ui.scrollable_panel import ScrollablePanel
 from ui.crop_dialog import open_crop_dialog
 from ui.image_effects_controls import build_image_effects
+from ui.collapsible_section import inspector_section
 
 
 class LayerSidebar(tk.Frame):
@@ -44,23 +46,12 @@ class LayerSidebar(tk.Frame):
 
         self.pack_propagate(False)
 
-        # Scrollable container
-        self.canvas_scroll = tk.Canvas(self, bg=BG_DARK, highlightthickness=0, bd=0)
-        self.scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.canvas_scroll.yview)
-        self.scroll_content = tk.Frame(self.canvas_scroll, bg=BG_DARK)
-
-        self.scroll_content.bind(
-            "<Configure>",
-            lambda e: self.canvas_scroll.configure(scrollregion=self.canvas_scroll.bbox("all"))
-        )
-        self._scroll_window = self.canvas_scroll.create_window((0, 0), window=self.scroll_content, anchor="nw")
-        self.canvas_scroll.configure(yscrollcommand=self.scrollbar.set)
-
-        self.canvas_scroll.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.bind("<Configure>", self._on_panel_resize)
-        self.canvas_scroll.bind_all("<MouseWheel>", self._on_mousewheel, add="+")
+        self.scroll_panel = ScrollablePanel(self, bg=BG_DARK)
+        self.scroll_panel.pack(fill=tk.BOTH, expand=True)
+        self.canvas_scroll = self.scroll_panel.canvas
+        self.scrollbar = self.scroll_panel.scrollbar
+        self.scroll_content = self.scroll_panel.content
+        self._scroll_window = self.scroll_panel.window
 
         # Build Sub-Sections
         self._build_layers_section()
@@ -68,15 +59,6 @@ class LayerSidebar(tk.Frame):
 
         self._initialized = True
         self.refresh()
-
-    def _on_panel_resize(self, event):
-        self.canvas_scroll.itemconfig(self._scroll_window, width=event.width - 15)
-
-    def _on_mousewheel(self, event):
-        x, y = self.winfo_pointerxy()
-        widget_under_mouse = self.winfo_containing(x, y)
-        if widget_under_mouse and str(widget_under_mouse).startswith(str(self)):
-            self.canvas_scroll.yview_scroll(int(-1 * (event.delta / 1)), "units")
 
     def _create_section_card(self, title: str) -> tk.Frame:
         card = tk.Frame(self.scroll_content, bg=BG_SECONDARY, padx=12, pady=10)
@@ -285,8 +267,11 @@ class LayerSidebar(tk.Frame):
             lbl.pack()
             return
 
+        transform = inspector_section(self, layer.layer_type, "Transform")
+        self._transform_container = transform
+
         # Common: Name
-        row_name = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
+        row_name = tk.Frame(transform, bg=BG_SECONDARY)
         row_name.pack(fill=tk.X, pady=2)
         tk.Label(row_name, text="Name:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
         
@@ -298,7 +283,7 @@ class LayerSidebar(tk.Frame):
         tk.Entry(row_name, textvariable=name_var, bg=BG_TERTIARY, fg=TEXT_PRIMARY, insertbackground="#FFF", relief=tk.FLAT).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # Position X / Y
-        row_pos = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
+        row_pos = tk.Frame(transform, bg=BG_SECONDARY)
         row_pos.pack(fill=tk.X, pady=4)
         tk.Label(row_pos, text="Position:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
 
@@ -330,8 +315,10 @@ class LayerSidebar(tk.Frame):
             self._build_text_layer_inspector(layer)
 
     def _build_image_layer_inspector(self, layer: ImageLayer):
+        crop = inspector_section(self, "image", "Crop")
+
         # Image Source Row
-        row_img = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
+        row_img = tk.Frame(crop, bg=BG_SECONDARY)
         row_img.pack(fill=tk.X, pady=4)
         tk.Label(row_img, text="Image:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
         
@@ -342,7 +329,7 @@ class LayerSidebar(tk.Frame):
         )
         btn_change.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        crop_row = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
+        crop_row = tk.Frame(crop, bg=BG_SECONDARY)
         crop_row.pack(fill=tk.X, pady=4)
         for title, action in [
             ("Crop...", lambda: open_crop_dialog(self, layer, self.on_change)),
@@ -352,7 +339,7 @@ class LayerSidebar(tk.Frame):
                        fg=BTN_FG, font=FONT_SMALL, padx=8, pady=4).pack(side=tk.LEFT, padx=2)
 
         # Scale slider
-        row_scale = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
+        row_scale = tk.Frame(self._transform_container, bg=BG_SECONDARY)
         row_scale.pack(fill=tk.X, pady=2)
         tk.Label(row_scale, text="Scale:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
         scale_slider = tk.Scale(
@@ -364,7 +351,7 @@ class LayerSidebar(tk.Frame):
         scale_slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # Rotation slider
-        row_rot = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
+        row_rot = tk.Frame(self._transform_container, bg=BG_SECONDARY)
         row_rot.pack(fill=tk.X, pady=2)
         tk.Label(row_rot, text="Rotate:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
         rot_slider = tk.Scale(
@@ -378,8 +365,7 @@ class LayerSidebar(tk.Frame):
         build_image_effects(self, layer)
 
         # Device Frame Sub-section
-        frame_box = tk.LabelFrame(self.inspector_container, text="📱 Device Frame & Shadow", bg=BG_SECONDARY, fg=TEXT_PRIMARY, font=FONT_BOLD, padx=8, pady=6)
-        frame_box.pack(fill=tk.X, pady=8)
+        frame_box = inspector_section(self, "image", "Device Frame & Shadow")
 
         # Frame Enable
         frame_en_var = tk.BooleanVar(value=layer.frame.enabled)
@@ -481,11 +467,13 @@ class LayerSidebar(tk.Frame):
             self.on_change()
 
     def _build_text_layer_inspector(self, layer: TextLayer):
+        text_section = inspector_section(self, "text", "Text")
+
         # Text Editor Area
-        tk.Label(self.inspector_container, text="Text Content:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY).pack(anchor=tk.W, pady=(4, 1))
+        tk.Label(text_section, text="Text Content:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY).pack(anchor=tk.W, pady=(4, 1))
         
         txt_box = tk.Text(
-            self.inspector_container,
+            text_section,
             height=3,
             bg=BG_TERTIARY,
             fg=TEXT_PRIMARY,
@@ -504,8 +492,10 @@ class LayerSidebar(tk.Frame):
 
         txt_box.bind("<KeyRelease>", _on_text_box_key)
 
+        typography = inspector_section(self, "text", "Typography")
+
         # Style Presets Row
-        style_row = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
+        style_row = tk.Frame(typography, bg=BG_SECONDARY)
         style_row.pack(fill=tk.X, pady=4)
         tk.Label(style_row, text="Preset:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
 
@@ -527,7 +517,7 @@ class LayerSidebar(tk.Frame):
         style_combo.bind("<<ComboboxSelected>>", _on_style_selected)
 
         # Font Family & Size
-        font_row = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
+        font_row = tk.Frame(typography, bg=BG_SECONDARY)
         font_row.pack(fill=tk.X, pady=4)
         tk.Label(font_row, text="Font:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
 
@@ -560,7 +550,7 @@ class LayerSidebar(tk.Frame):
         tk.Entry(font_row, textvariable=size_var, width=4, bg=BG_TERTIARY, fg=TEXT_PRIMARY, insertbackground="#FFF", relief=tk.FLAT).pack(side=tk.LEFT)
 
         # Weight & Align
-        opt_row = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
+        opt_row = tk.Frame(typography, bg=BG_SECONDARY)
         opt_row.pack(fill=tk.X, pady=4)
 
         bold_var = tk.BooleanVar(value=(layer.font_weight == "bold"))
@@ -588,7 +578,7 @@ class LayerSidebar(tk.Frame):
             btn.pack(side=tk.LEFT, padx=1)
 
         # Color Palette & Custom Color Picker
-        color_row = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
+        color_row = tk.Frame(typography, bg=BG_SECONDARY)
         color_row.pack(fill=tk.X, pady=4)
         tk.Label(color_row, text="Color:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
 
@@ -613,7 +603,7 @@ class LayerSidebar(tk.Frame):
         custom_col_btn.pack(side=tk.LEFT, padx=4)
 
         # Max Width (Auto-wrap) & Line Spacing
-        wrap_row = tk.Frame(self.inspector_container, bg=BG_SECONDARY)
+        wrap_row = tk.Frame(typography, bg=BG_SECONDARY)
         wrap_row.pack(fill=tk.X, pady=2)
         tk.Label(wrap_row, text="Max W:", font=FONT_SMALL, fg=TEXT_SECONDARY, bg=BG_SECONDARY, width=7, anchor=tk.W).pack(side=tk.LEFT)
         wrap_slider = tk.Scale(

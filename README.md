@@ -249,3 +249,9 @@ SSStudio/
 効果は非破壊のプロジェクト設定として保存され、元画像ファイルは変更しません。Free Crop / Crop Ratio Presetsと併用でき、切り抜き・リサイズ後の画像に適用します。画像とImage Shadowは同じグループで透明度・回転を適用します。Frameのボーダーはフェード対象外です。既存Frame Shadowの描画挙動は維持します。
 
 Panoramaはワークスペース全体を描画してから分割するため、画面境界でもフェードと影が連続します。Previewは縮小したblur・offsetで描画し、Export Current / Export Allは高解像度のRGB PNGを出力します。M1.2のフェード方向はBottomのみです。
+
+## Inspector操作 (M1.3)
+
+右側のプロパティはスクロールバー、マウスホイール、macOSトラックパッドで縦スクロールできます。小さいウィンドウでも下部の項目へ移動できます。Slider上のホイールはパネルをスクロールし、Sliderの値を変更しません。Sliderをドラッグ中はホイールによるパネル移動を抑制します。
+
+画像のTransform / Crop / Image Effects / Device Frame & Shadow、テキストのTransform / Text / Typographyは見出しクリックで折りたためます。開閉状態はレイヤー種類・セクションごとにアプリ起動中のみ保持します。左側のCanvas設定も同じ方法でスクロールできます。
