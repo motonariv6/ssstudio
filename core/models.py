@@ -253,6 +253,8 @@ class ImageLayer:
     crop_bottom: float = 1.0
 
     effects: ImageEffectsConfig = field(default_factory=ImageEffectsConfig)
+    placeholder_id: str = ""
+    placeholder_label: str = ""
 
     def reset_crop(self):
         self.crop_left = self.crop_top = 0.0

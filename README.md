@@ -255,3 +255,16 @@ Panoramaはワークスペース全体を描画してから分割するため、
 右側のプロパティはスクロールバー、マウスホイール、macOSトラックパッドで縦スクロールできます。小さいウィンドウでも下部の項目へ移動できます。Slider上のホイールはパネルをスクロールし、Sliderの値を変更しません。Sliderをドラッグ中はホイールによるパネル移動を抑制します。
 
 画像のTransform / Crop / Image Effects / Device Frame & Shadow、テキストのTransform / Text / Typographyは見出しクリックで折りたためます。開閉状態はレイヤー種類・セクションごとにアプリ起動中のみ保持します。左側のCanvas設定も同じ方法でスクロールできます。
+
+## Template Format v1 (M4)
+
+- **Template → Export Current Page as Template...**: Template Nameと保存先の親フォルダを選ぶと、名前付きのパッケージフォルダに`template.json`と`preview.png`を作成します。既存フォルダは上書きしません。
+- **Template → Import Template...**: パッケージ内の`template.json`を選択し、確認後に現在ページへ適用します。ページ名は維持し、背景・Workspace・レイヤーを置き換えます。
+- 画像はすべて**placeholder**になります。元スクリーンショットのファイル・パスは含めず、previewにも画像を表示しません。適用後はCrop欄の**Replace Image...**から差し替えできます。最初の差し替えではテンプレートのCropを保持します。
+- Single／2・3・4画面Panorama、レイヤー順、Crop、Bottom Fade、Image Shadow、Device Frame、文字スタイルを保存できます。既存built-inテンプレートも引き続き利用できます。
+- Store／Canvasサイズは参考情報として保持します。異なるProjectへの適用時は通知し、Project全体の設定を変更せず、元のピクセル座標を維持します。
+- パッケージは別Macへコピーできます。フォントは名前で指定し、未搭載の場合は通常のフォールバックを使用します。テキストやレイヤー名は保持するため、共有前に内容を確認してください。
+
+v1はディレクトリ形式・全画像placeholder方式です。Bundled assets、ZIP形式、永続Template Library、オンラインCommunity Galleryは今回の対象外です。不正manifestや未対応versionは理由を表示して拒否します。
+
+詳細なmanifest仕様と検証制限は[Template Format v1](docs/template-format-v1.md)を参照してください。
