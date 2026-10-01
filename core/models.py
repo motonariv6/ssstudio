@@ -153,6 +153,49 @@ class FrameConfig:
 
 
 @dataclass
+class ImageEffectsConfig:
+    fade_enabled: bool = False
+    fade_direction: str = "bottom"
+    fade_start: float = 0.70
+    fade_end: float = 1.00
+    shadow_enabled: bool = False
+    shadow_opacity: float = 0.30
+    shadow_blur: int = 24
+    shadow_offset_x: int = 0
+    shadow_offset_y: int = 16
+    shadow_color: str = "#000000"
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data) -> ImageEffectsConfig:
+        config = cls(**{k: v for k, v in (data if isinstance(data, dict) else {}).items()
+                       if k in cls.__dataclass_fields__})
+        config.normalize()
+        return config
+
+    def normalize(self):
+        import math
+
+        def bounded(value, default, low, high):
+            try:
+                value = float(value)
+                return max(low, min(high, value)) if math.isfinite(value) else default
+            except (TypeError, ValueError, OverflowError):
+                return default
+
+        self.fade_direction = "bottom"
+        self.fade_start = bounded(self.fade_start, .70, 0, .999)
+        self.fade_end = bounded(self.fade_end, 1, 0, 1)
+        self.fade_end = max(self.fade_start + .001, self.fade_end)
+        self.shadow_opacity = bounded(self.shadow_opacity, .30, 0, 1)
+        self.shadow_blur = int(bounded(self.shadow_blur, 24, 0, 100))
+        self.shadow_offset_x = int(bounded(self.shadow_offset_x, 0, -100, 100))
+        self.shadow_offset_y = int(bounded(self.shadow_offset_y, 16, -100, 100))
+
+
+@dataclass
 class GradientConfig:
     preset: str = "luxury_black"
     color_start: str = "#070709"
@@ -209,6 +252,8 @@ class ImageLayer:
     crop_right: float = 1.0
     crop_bottom: float = 1.0
 
+    effects: ImageEffectsConfig = field(default_factory=ImageEffectsConfig)
+
     def reset_crop(self):
         self.crop_left = self.crop_top = 0.0
         self.crop_right = self.crop_bottom = 1.0
@@ -223,6 +268,7 @@ class ImageLayer:
         data_copy = dict(data)
         if "frame" in data_copy and isinstance(data_copy["frame"], dict):
             data_copy["frame"] = FrameConfig.from_dict(data_copy["frame"])
+        data_copy["effects"] = ImageEffectsConfig.from_dict(data_copy.get("effects", {}))
         return cls(**{k: v for k, v in data_copy.items() if k in cls.__dataclass_fields__})
 
 
