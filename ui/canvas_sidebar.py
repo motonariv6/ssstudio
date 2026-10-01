@@ -10,6 +10,7 @@ from ui.theme import (
     BTN_BG_DEFAULT, BTN_BG_HOVER, BTN_FG, BTN_ACCENT_BG, BTN_ACCENT_HOVER
 )
 from ui.widgets import DarkButton
+from ui.scrollable_panel import ScrollablePanel
 from ui.workspace_controls import WorkspaceControls
 from core.store_profiles import STORE_LABELS, get_store_preset_labels
 
@@ -32,23 +33,12 @@ class CanvasSidebar(tk.Frame):
 
         self.pack_propagate(False)
 
-        # Scrollable container
-        self.canvas_scroll = tk.Canvas(self, bg=BG_DARK, highlightthickness=0, bd=0)
-        self.scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.canvas_scroll.yview)
-        self.scroll_content = tk.Frame(self.canvas_scroll, bg=BG_DARK)
-
-        self.scroll_content.bind(
-            "<Configure>",
-            lambda e: self.canvas_scroll.configure(scrollregion=self.canvas_scroll.bbox("all"))
-        )
-        self._scroll_window = self.canvas_scroll.create_window((0, 0), window=self.scroll_content, anchor="nw")
-        self.canvas_scroll.configure(yscrollcommand=self.scrollbar.set)
-
-        self.canvas_scroll.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.bind("<Configure>", self._on_panel_resize)
-        self.canvas_scroll.bind_all("<MouseWheel>", self._on_mousewheel, add="+")
+        self.scroll_panel = ScrollablePanel(self, bg=BG_DARK)
+        self.scroll_panel.pack(fill=tk.BOTH, expand=True)
+        self.canvas_scroll = self.scroll_panel.canvas
+        self.scrollbar = self.scroll_panel.scrollbar
+        self.scroll_content = self.scroll_panel.content
+        self._scroll_window = self.scroll_panel.window
 
         # Build Sections
         self._build_canvas_section()
@@ -56,16 +46,6 @@ class CanvasSidebar(tk.Frame):
 
         self._initialized = True
         self.refresh()
-
-    def _on_panel_resize(self, event):
-        self.canvas_scroll.itemconfig(self._scroll_window, width=event.width - 15)
-
-    def _on_mousewheel(self, event):
-        # Only scroll if mouse is over this sidebar
-        x, y = self.winfo_pointerxy()
-        widget_under_mouse = self.winfo_containing(x, y)
-        if widget_under_mouse and str(widget_under_mouse).startswith(str(self)):
-            self.canvas_scroll.yview_scroll(int(-1 * (event.delta / 1)), "units")
 
     def _create_section_card(self, title: str) -> tk.Frame:
         card = tk.Frame(self.scroll_content, bg=BG_SECONDARY, padx=12, pady=10)

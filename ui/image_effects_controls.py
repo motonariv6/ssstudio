@@ -5,12 +5,11 @@ from core.models import ImageEffectsConfig
 from ui.theme import (BG_SECONDARY, BG_TERTIARY, TEXT_PRIMARY, TEXT_SECONDARY,
                       FONT_BOLD, FONT_SMALL, BTN_BG_DEFAULT, BTN_FG)
 from ui.widgets import DarkButton
+from ui.collapsible_section import inspector_section
 
 
 def build_image_effects(self, layer):
-    box = tk.LabelFrame(self.inspector_container, text="Image Effects",
-                        bg=BG_SECONDARY, fg=TEXT_PRIMARY, font=FONT_BOLD, padx=8, pady=6)
-    box.pack(fill=tk.X, pady=8)
+    box = inspector_section(self, "image", "Image Effects")
     config = layer.effects
     config.normalize()
     sliders = {}
