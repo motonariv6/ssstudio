@@ -12,6 +12,7 @@ macOSローカル環境で動作する、Apple App Store / Google Play掲載用�
    - iPhone 6.3-inch (1206 × 2622)
    - iPad 13-inch (2064 × 2752)
    - Google Play Phone / Tablet: Portrait (1080 × 1920)、Landscape (1920 × 1080)
+   - Google Play Feature Graphic (1024 × 500)
    - Storeを保持するカスタム解像度入力対応
 
 2. **高級黒背景グラデーション（Luxury Black Preset）**
@@ -117,26 +118,31 @@ python app.py
 | Phone Landscape | 1920 × 1080 | phone | landscape |
 | Tablet Portrait | 1080 × 1920 | tablet | portrait |
 | Tablet Landscape | 1920 × 1080 | tablet | landscape |
+| Feature Graphic | 1024 × 500 | feature_graphic | landscape |
 
-PhoneとTabletは同じ解像度でも別Profileとして扱います。
-Profileは `name`、`store`、`device_type`、`orientation`、`width`、`height`、`description` を持ちます。
-Project JSONには従来の `preset_name`・寸法に加えてStore・端末種別・向きを保存します。
+PhoneとTablet、Feature Graphicは別Profile（および別asset_type）として扱います。
+Profileは `name`、`store`、`device_type`、`asset_type`、`orientation`、`width`、`height`、`description` を持ちます。
+Project JSONには従来の `preset_name`・寸法に加えてStore・端末種別・向き・アセット種別を保存します。
 向きは実際の寸法から求め、正方形は `square` とします。
 Store情報のない旧Projectも読み込め、既存Appleの寸法やM1 Cropは維持されます。
 
-**Size → Apply** でCustomに切り替えると、現在のStoreと端末種別を保持します。
+**Size → Apply** でCustomに切り替えると、現在のStoreと端末種別・アセット種別を保持します。
 CustomのままStoreを切り替えた場合は寸法を保持します。
 既存と同様、Preset一覧から **Custom** を選択した場合の初期寸法は1290 × 2796です。
-Google Playで使用する場合は、次の条件を満たす寸法に変更してください。
+Google Playで使用する場合は、ストア要件を満たす寸法に変更してください。
 
-**Export PNG / Export All PNGs** は、Google Play（Customを含む）に対して以下を検証します。
+### 通常スクリーンショットの検証
+**Export PNG / Export All PNGs** は、Google Playの通常スクリーンショット（Phone / Tablet / Custom）に対して以下を検証します。
 
 - 幅・高さがそれぞれ **320〜3840 px**（境界値を含む）
 - **長辺 ≤ 短辺 × 2**（ちょうど2:1は有効）
 
-不適合の場合は理由を表示し、ファイルを書き出さずに停止します。
-出力は従来どおりRGB PNGです。Apple向けExportへの新しい寸法制限はありません。
-M2はPhone / Tabletの基本スクリーンショット対応で、7-inch / 10-inch専用フローやFeature Graphic生成は含みません。
+### Feature Graphic — 1024 × 500
+Google Playのプロモーション用看板画像（Feature Graphic / アイキャッチ画像）作成専用のプリセットです。
+通常スクリーンショットの検証ルールとは異なり、Google Play要件に合わせて厳密に **1024 × 500 px** であることを検証します。
+寸法が異なる場合はエクスポートを停止し、理由を表示します。
+出力は既存と同様のRGB PNG（またはJPEG）に対応しています。
+Feature Graphicは単一キャンバス（Single Canvas）向け用途を想定しています。
 
 ---
 

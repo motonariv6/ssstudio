@@ -136,6 +136,8 @@ def validate_manifest(data):
                         for key in ('canvas_width', 'canvas_height')}
     for key in ('preset_name', 'device_type'):
         result['target'][key] = _string(target.get(key, 'Custom' if key == 'preset_name' else 'custom'), f'target.{key}')
+    if 'asset_type' in target:
+        result['target']['asset_type'] = _string(target['asset_type'], 'target.asset_type')
     if target['canvas_width'] * target['canvas_height'] * result['screen_count'] > 32000000:
         raise TemplateError('Template workspace exceeds 32 million pixels')
     content = _object(data['content'], 'content')
@@ -230,12 +232,15 @@ def template_from_page(project, page, name, description='', author='', tags=None
             placeholder_ids.add(placeholder_id)
             layer['placeholder_id'] = placeholder_id
             layer['placeholder_label'] = layer.get('placeholder_label') or layer['name']
+    target_data = {'canvas_width': project.canvas_width, 'canvas_height': project.canvas_height,
+                   'preset_name': project.preset_name, 'device_type': project.device_type}
+    if project.asset_type:
+        target_data['asset_type'] = project.asset_type
     return validate_manifest({'format': FORMAT, 'version': VERSION, 'id': str(uuid.uuid4()),
         'name': name, 'description': description, 'author': author, 'tags': tags or [],
         'created_with': 'SSStudio', 'store': project.store,
         'screen_count': page.panorama.screen_count if page.panorama.enabled else 1,
-        'target': {'canvas_width': project.canvas_width, 'canvas_height': project.canvas_height,
-                   'preset_name': project.preset_name, 'device_type': project.device_type}, 'content': content})
+        'target': target_data, 'content': content})
 
 
 def load_template_package(path):
