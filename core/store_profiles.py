@@ -14,9 +14,10 @@ def get_orientation(width: int, height: int) -> str:
     return "portrait" if height > width else "landscape"
 
 
-def _profile(name, store, device_type, width, height, description):
+def _profile(name, store, device_type, width, height, description, asset_type="screenshot"):
     return {
         "name": name, "store": store, "device_type": device_type,
+        "asset_type": asset_type,
         "orientation": get_orientation(width, height),
         "width": width, "height": height, "description": description,
         "desc": description,  # Compatibility with existing preset consumers.
@@ -32,14 +33,19 @@ CANVAS_PRESETS: Dict[str, Dict[str, Any]] = {
     "Google Play Phone Landscape": _profile("Google Play Phone Landscape", "google_play", "phone", 1920, 1080, "Google Play phone screenshot"),
     "Google Play Tablet Portrait": _profile("Google Play Tablet Portrait", "google_play", "tablet", 1080, 1920, "Google Play tablet screenshot"),
     "Google Play Tablet Landscape": _profile("Google Play Tablet Landscape", "google_play", "tablet", 1920, 1080, "Google Play tablet screenshot"),
+    "Google Play Feature Graphic": _profile("Google Play Feature Graphic", "google_play", "feature_graphic", 1024, 500, "Google Play feature graphic", asset_type="feature_graphic"),
+    "Google Play — Feature Graphic": _profile("Google Play — Feature Graphic", "google_play", "feature_graphic", 1024, 500, "Google Play feature graphic", asset_type="feature_graphic"),
     "Custom": _profile("Custom", "custom", "custom", 1290, 2796, "Custom Dimensions"),
 }
 
 
 def get_store_preset_labels(store: str) -> Dict[str, str]:
     """Map short UI labels to stable JSON profile keys under a Store selector."""
-    return {
-        key.removeprefix("Google Play "): key
-        for key, profile in CANVAS_PRESETS.items()
-        if profile["store"] == store or key == "Custom"
-    }
+    labels = {}
+    for key, profile in CANVAS_PRESETS.items():
+        if profile["store"] == store or key == "Custom":
+            if "—" in key:
+                continue
+            label = key.removeprefix("Google Play ")
+            labels[label] = key
+    return labels

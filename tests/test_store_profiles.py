@@ -116,6 +116,30 @@ class StoreProfileTests(unittest.TestCase):
             self.assertEqual((loaded.canvas_width, loaded.canvas_height), (1290, 2796))
 
 
+    def test_feature_graphic_profile_metadata_and_selection(self):
+        self.assertIn('Google Play Feature Graphic', CANVAS_PRESETS)
+        profile = CANVAS_PRESETS['Google Play Feature Graphic']
+        self.assertEqual(profile['width'], 1024)
+        self.assertEqual(profile['height'], 500)
+        self.assertEqual(profile['store'], 'google_play')
+        self.assertEqual(profile['asset_type'], 'feature_graphic')
+        self.assertEqual(profile['orientation'], 'landscape')
+
+        project = Project()
+        project.set_preset('Google Play Feature Graphic')
+        self.assertEqual(project.canvas_width, 1024)
+        self.assertEqual(project.canvas_height, 500)
+        self.assertEqual(project.store, 'google_play')
+        self.assertEqual(project.asset_type, 'feature_graphic')
+        self.assertEqual(project.orientation, 'landscape')
+        self.assertEqual(validate_project_export(project), [])
+
+    def test_feature_graphic_ui_labels(self):
+        labels = get_store_preset_labels('google_play')
+        self.assertIn('Feature Graphic', labels)
+        self.assertEqual(labels['Feature Graphic'], 'Google Play Feature Graphic')
+
+
 class StoreValidationTests(unittest.TestCase):
     def test_google_dimension_boundaries(self):
         for w, h in [(1080, 1920), (1920, 1080), (320, 320), (320, 640),
@@ -128,6 +152,33 @@ class StoreValidationTests(unittest.TestCase):
             with self.subTest(size=(w, h)):
                 self.assertIn(reason, ' '.join(validate_store_canvas('google_play', w, h)))
         self.assertEqual(validate_store_canvas('apple_app_store', 1290, 2796), [])
+
+    def test_feature_graphic_validation(self):
+        # Exact 1024x500 passes
+        self.assertEqual(validate_store_canvas('google_play', 1024, 500, asset_type='feature_graphic'), [])
+
+        # Boundary/mismatched sizes fail
+        for w, h in [(1023, 500), (1024, 499), (1025, 500), (1024, 501), (500, 1024), (1080, 1920)]:
+            with self.subTest(size=(w, h)):
+                errors = validate_store_canvas('google_play', w, h, asset_type='feature_graphic')
+                self.assertTrue(errors)
+                self.assertIn('1024 × 500', errors[0])
+
+        project = Project()
+        project.set_preset('Google Play Feature Graphic')
+        self.assertEqual(validate_project_export(project), [])
+
+        project.set_custom_size(1023, 500)
+        self.assertTrue(validate_project_export(project))
+        self.assertIn('1024 × 500', validate_project_export(project)[0])
+
+        project.set_custom_size(1024, 499)
+        self.assertTrue(validate_project_export(project))
+        self.assertIn('1024 × 500', validate_project_export(project)[0])
+
+        project.set_custom_size(1025, 500)
+        self.assertTrue(validate_project_export(project))
+        self.assertIn('1024 × 500', validate_project_export(project)[0])
 
     def test_invalid_export_does_not_render_create_or_overwrite(self):
         project = Project(preset_name='Custom', store='google_play', canvas_width=319, canvas_height=640)
@@ -155,6 +206,14 @@ class StoreValidationTests(unittest.TestCase):
                 self.assertTrue(result[0], result[1])
                 with Image.open(path) as image:
                     self.assertEqual((image.size, image.mode), ((w, h), 'RGB'))
+            # Also test feature graphic export
+            project.set_preset('Google Play Feature Graphic')
+            fg_path = Path(tmp) / 'fg.png'
+            fg_result = export_single_page(project, project.active_page, str(fg_path))
+            self.assertTrue(fg_result[0], fg_result[1])
+            with Image.open(fg_path) as image:
+                self.assertEqual((image.size, image.mode), ((1024, 500), 'RGB'))
+
             project.pages.append(Page(name='Second'))
             results = export_all_pages(project, str(Path(tmp) / 'batch'))
             self.assertEqual(len(results), 2)
@@ -204,6 +263,41 @@ class StoreRegressionTests(unittest.TestCase):
         self.assertNotEqual(project.pages[0].layers[0].id, project.pages[1].layers[0].id)
         self.assertEqual((project.store, project.device_type, project.orientation), ('google_play', 'tablet', 'landscape'))
 
+    def test_feature_graphic_save_load_roundtrip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / 'feature_graphic_project.json')
+            project = Project(preset_name='Google Play Feature Graphic')
+            project.set_preset('Google Play Feature Graphic')
+            self.assertTrue(save_project_to_json(project, path)[0])
+            loaded, message = load_project_from_json(path)
+            self.assertIsNotNone(loaded, message)
+            self.assertEqual(loaded.preset_name, 'Google Play Feature Graphic')
+            self.assertEqual(loaded.store, 'google_play')
+            self.assertEqual(loaded.asset_type, 'feature_graphic')
+            self.assertEqual(loaded.canvas_width, 1024)
+            self.assertEqual(loaded.canvas_height, 500)
+            self.assertEqual(loaded.to_dict(), project.to_dict())
+
+    def test_feature_graphic_template_roundtrip(self):
+        from core.template_format import template_from_page, export_template_package, load_template_package
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Project(name='FG Promo')
+            project.set_preset('Google Play Feature Graphic')
+            page = project.active_page
+            page.layers.append(TextLayer(text='Feature Graphic Text', font_size=40, x=512, y=250))
+            
+            pkg_dir = Path(tmp) / 'fg_template'
+            exported = export_template_package(project, page, str(pkg_dir), 'FG Template', 'Feature graphic promo')
+            self.assertEqual(exported.manifest['store'], 'google_play')
+            self.assertEqual(exported.manifest['target']['canvas_width'], 1024)
+            self.assertEqual(exported.manifest['target']['canvas_height'], 500)
+            self.assertEqual(exported.manifest['target']['asset_type'], 'feature_graphic')
+
+            loaded = load_template_package(str(pkg_dir))
+            self.assertEqual(loaded.manifest['target']['canvas_width'], 1024)
+            self.assertEqual(loaded.manifest['target']['canvas_height'], 500)
+            self.assertEqual(loaded.manifest['target']['asset_type'], 'feature_graphic')
+
     def test_templates_preserve_profile(self):
         project = Project()
         project.set_preset('Google Play Phone Landscape')
@@ -219,7 +313,7 @@ class StoreRegressionTests(unittest.TestCase):
             project = Project()
             project.set_preset('Google Play Phone Portrait')
             fake = SimpleNamespace(get_project=lambda: project, canvas_w_var=Mock(), canvas_h_var=Mock(),
-                                   _refresh_canvas_profile=Mock(), on_change=Mock())
+                                    _refresh_canvas_profile=Mock(), on_change=Mock())
             fake.canvas_w_var.get.return_value = '319'
             fake.canvas_h_var.get.return_value = '500'
             panel._apply_custom_canvas_size(fake)

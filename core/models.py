@@ -357,6 +357,7 @@ class Project:
 
     store: Optional[str] = None
     device_type: Optional[str] = None
+    asset_type: Optional[str] = None
 
     def __post_init__(self):
         profile = CANVAS_PRESETS.get(self.preset_name)
@@ -364,9 +365,11 @@ class Project:
             # A named profile owns its store/device identity. Keep saved dimensions.
             self.store = profile["store"]
             self.device_type = profile["device_type"]
+            self.asset_type = profile.get("asset_type", "screenshot")
         else:
             self.store = self.store or "apple_app_store"
             self.device_type = self.device_type or "custom"
+            self.asset_type = self.asset_type or "screenshot"
 
     @property
     def orientation(self) -> str:
@@ -408,6 +411,7 @@ class Project:
             if preset_name != "Custom":
                 self.store = CANVAS_PRESETS[preset_name]["store"]
                 self.device_type = CANVAS_PRESETS[preset_name]["device_type"]
+                self.asset_type = CANVAS_PRESETS[preset_name].get("asset_type", "screenshot")
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -415,6 +419,7 @@ class Project:
             "preset_name": self.preset_name,
             "store": self.store,
             "device_type": self.device_type,
+            "asset_type": self.asset_type,
             "orientation": self.orientation,
             "canvas_width": self.canvas_width,
             "canvas_height": self.canvas_height,
@@ -435,5 +440,6 @@ class Project:
             pages=pages,
             active_page_index=data.get("active_page_index", 0),
             store=data.get("store"),
-            device_type=data.get("device_type")
+            device_type=data.get("device_type"),
+            asset_type=data.get("asset_type")
         )
